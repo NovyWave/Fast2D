@@ -22,9 +22,9 @@ fn root() -> impl Element {
         .s(Background::new().color(color!("Black")))
         // NOTE 1: Only one example can be run at a time becuse there can be only one Winit EventLoop
         // NOTE 2: Some examples disappear when the window is moved to another monitor because the canvas is not redrawn
-        // .item(panel_with_canvas(hello_triangle::run))
+        .item(panel_with_canvas(hello_triangle::run))
         // .item(panel_with_canvas(hello_world::run))
-        .item(panel_with_canvas(rust_logo::run))
+        // .item(panel_with_canvas(rust_logo::run))
 }
 
 fn panel_with_canvas(
