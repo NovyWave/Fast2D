@@ -14,5 +14,5 @@ publish = false
 [workspace.dependencies]
 # zoon = { path = "../../MoonZoon/crates/zoon" }
 # moon = { path = "../../MoonZoon/crates/moon" }
-zoon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "d3333db9ebe52c49117858927df5c73f9d9b2dae" }
-moon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "d3333db9ebe52c49117858927df5c73f9d9b2dae" }
+zoon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "507832338c442ee5e7d19b1aa4fc49d7034d5ed0" }
+moon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "507832338c442ee5e7d19b1aa4fc49d7034d5ed0" }

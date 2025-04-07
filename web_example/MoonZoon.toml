@@ -18,7 +18,6 @@ frontend = [
     "frontend/src",
     "shared/Cargo.toml",
     "shared/src",
-    # "../../MoonZoon/crates/zoon/src",
     "../crates/fast2d/Cargo.toml",
     "../crates/fast2d/src",
 ]
@@ -27,7 +26,6 @@ backend = [
     "backend/src",
     "shared/Cargo.toml",
     "shared/src",
-    # "../../MoonZoon/crates/moon/src",
     "../crates/fast2d/Cargo.toml",
     "../crates/fast2d/src",
 ]

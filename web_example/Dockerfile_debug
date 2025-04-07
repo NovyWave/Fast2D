@@ -3,7 +3,7 @@ WORKDIR /app
 
 RUN rustup target add wasm32-unknown-unknown
 RUN --mount=type=cache,target=/usr/local/cargo,from=rust,source=/usr/local/cargo \
-    cargo install mzoon --git https://github.com/MoonZoon/MoonZoon --rev d3333db9ebe52c49117858927df5c73f9d9b2dae --locked
+    cargo install mzoon --git https://github.com/MoonZoon/MoonZoon --rev 507832338c442ee5e7d19b1aa4fc49d7034d5ed0 --locked
 
 COPY . .
 
