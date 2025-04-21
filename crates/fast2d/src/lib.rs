@@ -37,8 +37,25 @@ impl Into<Object2d> for Text {
     }
 }
 
+pub struct Rectangle {
+}
+
+impl Rectangle {
+    pub fn new() -> Self {
+        Self {
+        }
+    }
+}
+
+impl Into<Object2d> for Rectangle {
+    fn into(self) -> Object2d {
+        Object2d::Rectangle(self)
+    }
+}
+
 pub enum Object2d {
     Text(Text),
+    Rectangle(Rectangle),
 }
 
 pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {

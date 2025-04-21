@@ -23,12 +23,14 @@ fn root() -> impl Element {
         .s(Background::new().color(color!("Black")))
         .item(panel_with_canvas(|canvas| { 
             fast2d::run(canvas, vec![
-                fast2d::Text::new("Hello, world!").into()
+                fast2d::Text::new("Hello, world!").into(),
+                fast2d::Rectangle::new().into(),
             ])
         }))
         .item(panel_with_canvas(|canvas| { 
             fast2d::run(canvas, vec![
-                fast2d::Text::new("Hello from Fast2D!").into()
+                fast2d::Text::new("Hello from Fast2D!").into(),
+                fast2d::Rectangle::new().into(),
             ])
         }))
 }
