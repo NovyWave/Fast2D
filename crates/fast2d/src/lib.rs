@@ -14,6 +14,11 @@ use glyphon::{
     SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
 };
 
+use lyon::math::{Box2D, Point, point};
+use lyon::path::{Winding, builder::BorderRadii};
+use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers};
+use lyon::tessellation::geometry_builder::simple_builder;
+
 use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget};
 
 const CANVAS_WIDTH: u32 = 350;
@@ -109,6 +114,9 @@ fn create_graphics(
         let swapchain_capabilities = surface.get_capabilities(&adapter);
         let swapchain_format = swapchain_capabilities.formats[0];
 
+
+
+
         // Set up text renderer
         let mut font_system = {
             // NOTE: Smaller and compressed font would be probably better
@@ -130,6 +138,42 @@ fn create_graphics(
             Shaping::Advanced,
         );
         text_buffer.shape_until_scroll(&mut font_system, false);
+
+
+
+
+
+        let mut geometry: VertexBuffers<Point, u16> = VertexBuffers::new();
+        let mut geometry_builder = simple_builder(&mut geometry);
+        let options = FillOptions::tolerance(0.1);
+        let mut tessellator = FillTessellator::new();
+
+        let mut builder = tessellator.builder(
+            &options,
+            &mut geometry_builder,
+        );
+
+        builder.add_rounded_rectangle(
+            &Box2D { min: point(0.0, 0.0), max: point(100.0, 50.0) },
+            &BorderRadii {
+                top_left: 10.0,
+                top_right: 5.0,
+                bottom_left: 20.0,
+                bottom_right: 25.0,
+            },
+            Winding::Positive,
+        );
+
+        builder.build().unwrap_throw();
+
+        // The tessellated geometry is ready to be uploaded to the GPU.
+        zoon::println!(" -- {} vertices {} indices",
+            geometry.vertices.len(),
+            geometry.indices.len()
+        );
+
+
+
 
         Graphics {
             device,
