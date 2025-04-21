@@ -663,6 +663,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "codespan-reporting"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe6d2e5af09e8c8ad56c969f2157a3d4238cebc7c55f0a517728c38f7b200f81"
+dependencies = [
+ "serde",
+ "termcolor",
+ "unicode-width",
+]
+
+[[package]]
 name = "color_macro"
 version = "0.1.0"
 source = "git+https://github.com/MoonZoon/MoonZoon?rev=507832338c442ee5e7d19b1aa4fc49d7034d5ed0#507832338c442ee5e7d19b1aa4fc49d7034d5ed0"
@@ -763,7 +774,30 @@ dependencies = [
  "rustc-hash 1.1.0",
  "rustybuzz",
  "self_cell",
- "swash",
+ "swash 0.1.19",
+ "sys-locale",
+ "ttf-parser 0.21.1",
+ "unicode-bidi",
+ "unicode-linebreak",
+ "unicode-script",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "cosmic-text"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da46a9d5a8905cc538a4a5bceb6a4510de7a51049c5588c0114efce102bcbbe8"
+dependencies = [
+ "bitflags 2.9.0",
+ "fontdb",
+ "log",
+ "rangemap",
+ "rustc-hash 1.1.0",
+ "rustybuzz",
+ "self_cell",
+ "smol_str",
+ "swash 0.2.2",
  "sys-locale",
  "ttf-parser 0.21.1",
  "unicode-bidi",
@@ -805,6 +839,12 @@ name = "crossbeam-utils"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
+
+[[package]]
+name = "crunchy"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43da5946c66ffcc7745f48db692ffbb10a83bfe0afd96235c5c2a4fb23994929"
 
 [[package]]
 name = "crypto-common"
@@ -1087,10 +1127,9 @@ name = "fast2d"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "glyphon",
- "lyon",
- "wgpu",
- "winit",
+ "glyphon 0.9.0",
+ "lyon 1.0.1 (git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4)",
+ "wgpu 25.0.0",
  "zoon",
 ]
 
@@ -1117,6 +1156,15 @@ name = "font-types"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3971f9a5ca983419cdc386941ba3b9e1feba01a0ab888adf78739feb2798492"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
+name = "font-types"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1fa6a5e5a77b5f3f7f9e32879f484aa5b3632ddfbe568a16266c904a6f32cdaf"
 dependencies = [
  "bytemuck",
 ]
@@ -1186,9 +1234,9 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "fast2d",
- "glyphon",
- "lyon",
- "wgpu",
+ "glyphon 0.8.0",
+ "lyon 1.0.1 (git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1)",
+ "wgpu 24.0.3",
  "winit",
 ]
 
@@ -1406,11 +1454,24 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bc83cc30ed66a0a9e77b7974c91360a13cad5e7ab65aa51e299c383749a018ab"
 dependencies = [
- "cosmic-text",
+ "cosmic-text 0.12.1",
  "etagere",
  "lru",
  "rustc-hash 2.1.1",
- "wgpu",
+ "wgpu 24.0.3",
+]
+
+[[package]]
+name = "glyphon"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c6a289ad2a23656ccf4306fc818cef6776471a136d909123fd26c0f2ecb44ba"
+dependencies = [
+ "cosmic-text 0.14.2",
+ "etagere",
+ "lru",
+ "rustc-hash 2.1.1",
+ "wgpu 25.0.0",
 ]
 
 [[package]]
@@ -1469,6 +1530,17 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+]
+
+[[package]]
+name = "half"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "459196ed295495a68f7d7fe1d84f6c4b7ff0e21fe3017b2f283c6fac3ad803c9"
+dependencies = [
+ "cfg-if",
+ "crunchy",
+ "num-traits",
 ]
 
 [[package]]
@@ -1934,9 +2006,19 @@ name = "lyon"
 version = "1.0.1"
 source = "git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1#54169fb867a5aa8d9b56c207d42621cb880349a1"
 dependencies = [
- "lyon_algorithms",
- "lyon_extra",
- "lyon_tessellation",
+ "lyon_algorithms 1.0.5 (git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1)",
+ "lyon_extra 1.0.3 (git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1)",
+ "lyon_tessellation 1.0.15 (git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1)",
+]
+
+[[package]]
+name = "lyon"
+version = "1.0.1"
+source = "git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4#8f71592f51ad2c78237e827ec5b824744e9d3de4"
+dependencies = [
+ "lyon_algorithms 1.0.5 (git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4)",
+ "lyon_extra 1.0.3 (git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4)",
+ "lyon_tessellation 1.0.15 (git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4)",
 ]
 
 [[package]]
@@ -1944,7 +2026,16 @@ name = "lyon_algorithms"
 version = "1.0.5"
 source = "git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1#54169fb867a5aa8d9b56c207d42621cb880349a1"
 dependencies = [
- "lyon_path",
+ "lyon_path 1.0.6",
+ "num-traits",
+]
+
+[[package]]
+name = "lyon_algorithms"
+version = "1.0.5"
+source = "git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4#8f71592f51ad2c78237e827ec5b824744e9d3de4"
+dependencies = [
+ "lyon_path 1.0.7",
  "num-traits",
 ]
 
@@ -1953,7 +2044,16 @@ name = "lyon_extra"
 version = "1.0.3"
 source = "git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1#54169fb867a5aa8d9b56c207d42621cb880349a1"
 dependencies = [
- "lyon_path",
+ "lyon_path 1.0.6",
+ "thiserror 1.0.69",
+]
+
+[[package]]
+name = "lyon_extra"
+version = "1.0.3"
+source = "git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4#8f71592f51ad2c78237e827ec5b824744e9d3de4"
+dependencies = [
+ "lyon_path 1.0.7",
  "thiserror 1.0.69",
 ]
 
@@ -1968,11 +2068,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "lyon_geom"
+version = "1.0.6"
+source = "git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4#8f71592f51ad2c78237e827ec5b824744e9d3de4"
+dependencies = [
+ "arrayvec",
+ "euclid",
+ "num-traits",
+]
+
+[[package]]
 name = "lyon_path"
 version = "1.0.6"
 source = "git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1#54169fb867a5aa8d9b56c207d42621cb880349a1"
 dependencies = [
- "lyon_geom",
+ "lyon_geom 1.0.6 (git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1)",
+ "num-traits",
+]
+
+[[package]]
+name = "lyon_path"
+version = "1.0.7"
+source = "git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4#8f71592f51ad2c78237e827ec5b824744e9d3de4"
+dependencies = [
+ "lyon_geom 1.0.6 (git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4)",
  "num-traits",
 ]
 
@@ -1982,7 +2101,17 @@ version = "1.0.15"
 source = "git+https://github.com/nical/lyon?rev=54169fb867a5aa8d9b56c207d42621cb880349a1#54169fb867a5aa8d9b56c207d42621cb880349a1"
 dependencies = [
  "float_next_after",
- "lyon_path",
+ "lyon_path 1.0.6",
+ "num-traits",
+]
+
+[[package]]
+name = "lyon_tessellation"
+version = "1.0.15"
+source = "git+https://github.com/nical/lyon?rev=8f71592f51ad2c78237e827ec5b824744e9d3de4#8f71592f51ad2c78237e827ec5b824744e9d3de4"
+dependencies = [
+ "float_next_after",
+ "lyon_path 1.0.7",
  "num-traits",
 ]
 
@@ -2152,7 +2281,7 @@ dependencies = [
  "bit-set",
  "bitflags 2.9.0",
  "cfg_aliases",
- "codespan-reporting",
+ "codespan-reporting 0.11.1",
  "hexf-parse",
  "indexmap",
  "log",
@@ -2162,6 +2291,30 @@ dependencies = [
  "termcolor",
  "thiserror 2.0.12",
  "unicode-xid",
+]
+
+[[package]]
+name = "naga"
+version = "25.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b977c445f26e49757f9aca3631c3b8b836942cb278d69a92e7b80d3b24da632"
+dependencies = [
+ "arrayvec",
+ "bit-set",
+ "bitflags 2.9.0",
+ "cfg_aliases",
+ "codespan-reporting 0.12.0",
+ "half",
+ "hashbrown",
+ "hexf-parse",
+ "indexmap",
+ "log",
+ "num-traits",
+ "once_cell",
+ "rustc-hash 1.1.0",
+ "strum",
+ "thiserror 2.0.12",
+ "unicode-ident",
 ]
 
 [[package]]
@@ -2488,9 +2641,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.20.3"
+version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
+checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "orbclient"
@@ -2681,6 +2834,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "portable-atomic"
+version = "1.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "350e9b48cbc6b0e028b0473b114454c6316e57336ee184ceab6e53f72c178b3e"
+
+[[package]]
 name = "powerfmt"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2852,7 +3011,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69aacb76b5c29acfb7f90155d39759a29496aebb49395830e928a9703d2eec2f"
 dependencies = [
  "bytemuck",
- "font-types",
+ "font-types 0.7.3",
+]
+
+[[package]]
+name = "read-fonts"
+version = "0.25.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6f9e8a4f503e5c8750e4cd3b32a4e090035c46374b305a15c70bad833dca05f"
+dependencies = [
+ "bytemuck",
+ "font-types 0.8.4",
 ]
 
 [[package]]
@@ -3226,7 +3395,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e1c44ad1f6c5bdd4eefed8326711b7dbda9ea45dfd36068c427d332aa382cbe"
 dependencies = [
  "bytemuck",
- "read-fonts",
+ "read-fonts 0.22.7",
+]
+
+[[package]]
+name = "skrifa"
+version = "0.26.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cc1aa86c26dbb1b63875a7180aa0819709b33348eb5b1491e4321fae388179d"
+dependencies = [
+ "bytemuck",
+ "read-fonts 0.25.3",
 ]
 
 [[package]]
@@ -3377,9 +3556,20 @@ version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cbd59f3f359ddd2c95af4758c18270eddd9c730dde98598023cdabff472c2ca2"
 dependencies = [
- "skrifa",
- "yazi",
- "zeno",
+ "skrifa 0.22.3",
+ "yazi 0.1.6",
+ "zeno 0.2.3",
+]
+
+[[package]]
+name = "swash"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fae9a562c7b46107d9c78cd78b75bbe1e991c16734c0aee8ff0ee711fb8b620a"
+dependencies = [
+ "skrifa 0.26.6",
+ "yazi 0.2.1",
+ "zeno 0.3.2",
 ]
 
 [[package]]
@@ -4041,7 +4231,7 @@ dependencies = [
  "document-features",
  "js-sys",
  "log",
- "naga",
+ "naga 24.0.0",
  "parking_lot 0.12.3",
  "profiling",
  "raw-window-handle",
@@ -4050,9 +4240,35 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wgpu-core",
- "wgpu-hal",
- "wgpu-types",
+ "wgpu-core 24.0.2",
+ "wgpu-hal 24.0.2",
+ "wgpu-types 24.0.0",
+]
+
+[[package]]
+name = "wgpu"
+version = "25.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca6049eb2014a0e0d8689f9b787605dd71d5bbfdc74095ead499f3cff705c229"
+dependencies = [
+ "arrayvec",
+ "bitflags 2.9.0",
+ "cfg_aliases",
+ "document-features",
+ "hashbrown",
+ "js-sys",
+ "log",
+ "parking_lot 0.12.3",
+ "portable-atomic",
+ "profiling",
+ "raw-window-handle",
+ "smallvec 1.14.0",
+ "static_assertions",
+ "wasm-bindgen",
+ "web-sys",
+ "wgpu-core 25.0.1",
+ "wgpu-hal 25.0.1",
+ "wgpu-types 25.0.0",
 ]
 
 [[package]]
@@ -4068,7 +4284,7 @@ dependencies = [
  "document-features",
  "indexmap",
  "log",
- "naga",
+ "naga 24.0.0",
  "once_cell",
  "parking_lot 0.12.3",
  "profiling",
@@ -4076,8 +4292,56 @@ dependencies = [
  "rustc-hash 1.1.0",
  "smallvec 1.14.0",
  "thiserror 2.0.12",
- "wgpu-hal",
- "wgpu-types",
+ "wgpu-hal 24.0.2",
+ "wgpu-types 24.0.0",
+]
+
+[[package]]
+name = "wgpu-core"
+version = "25.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a19813e647da7aa3cdaa84f5846e2c64114970ea7c86b1e6aae8be08091f4bdc"
+dependencies = [
+ "arrayvec",
+ "bit-set",
+ "bit-vec",
+ "bitflags 2.9.0",
+ "cfg_aliases",
+ "document-features",
+ "hashbrown",
+ "indexmap",
+ "log",
+ "naga 25.0.1",
+ "once_cell",
+ "parking_lot 0.12.3",
+ "portable-atomic",
+ "profiling",
+ "raw-window-handle",
+ "rustc-hash 1.1.0",
+ "smallvec 1.14.0",
+ "thiserror 2.0.12",
+ "wgpu-core-deps-wasm",
+ "wgpu-core-deps-windows-linux-android",
+ "wgpu-hal 25.0.1",
+ "wgpu-types 25.0.0",
+]
+
+[[package]]
+name = "wgpu-core-deps-wasm"
+version = "25.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eca8809ad123f6c7f2c5e01a2c7117c4fdfd02f70bd422ee2533f69dfa98756c"
+dependencies = [
+ "wgpu-hal 25.0.1",
+]
+
+[[package]]
+name = "wgpu-core-deps-windows-linux-android"
+version = "25.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cba5fb5f7f9c98baa7c889d444f63ace25574833df56f5b817985f641af58e46"
+dependencies = [
+ "wgpu-hal 25.0.1",
 ]
 
 [[package]]
@@ -4103,7 +4367,7 @@ dependencies = [
  "libloading",
  "log",
  "metal",
- "naga",
+ "naga 24.0.0",
  "ndk-sys 0.5.0+25.2.9519653",
  "objc",
  "once_cell",
@@ -4117,7 +4381,40 @@ dependencies = [
  "thiserror 2.0.12",
  "wasm-bindgen",
  "web-sys",
- "wgpu-types",
+ "wgpu-types 24.0.0",
+ "windows",
+]
+
+[[package]]
+name = "wgpu-hal"
+version = "25.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb7c4a1dc42ff14c23c9b11ebf1ee85cde661a9b1cf0392f79c1faca5bc559fb"
+dependencies = [
+ "arrayvec",
+ "bitflags 2.9.0",
+ "bytemuck",
+ "cfg-if",
+ "cfg_aliases",
+ "glow",
+ "glutin_wgl_sys",
+ "hashbrown",
+ "js-sys",
+ "khronos-egl",
+ "libloading",
+ "log",
+ "naga 25.0.1",
+ "ndk-sys 0.5.0+25.2.9519653",
+ "objc",
+ "parking_lot 0.12.3",
+ "portable-atomic",
+ "profiling",
+ "raw-window-handle",
+ "renderdoc-sys",
+ "thiserror 2.0.12",
+ "wasm-bindgen",
+ "web-sys",
+ "wgpu-types 25.0.0",
  "windows",
 ]
 
@@ -4130,6 +4427,20 @@ dependencies = [
  "bitflags 2.9.0",
  "js-sys",
  "log",
+ "web-sys",
+]
+
+[[package]]
+name = "wgpu-types"
+version = "25.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2aa49460c2a8ee8edba3fca54325540d904dd85b2e086ada762767e17d06e8bc"
+dependencies = [
+ "bitflags 2.9.0",
+ "bytemuck",
+ "js-sys",
+ "log",
+ "thiserror 2.0.12",
  "web-sys",
 ]
 
@@ -4600,6 +4911,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c94451ac9513335b5e23d7a8a2b61a7102398b8cca5160829d313e84c9d98be1"
 
 [[package]]
+name = "yazi"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e01738255b5a16e78bbb83e7fbba0a1e7dd506905cfc53f4622d89015a03fbb5"
+
+[[package]]
 name = "yoke"
 version = "0.7.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4628,6 +4945,12 @@ name = "zeno"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd15f8e0dbb966fd9245e7498c7e9e5055d9e5c8b676b95bd67091cd11a1e697"
+
+[[package]]
+name = "zeno"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cc0de2315dc13d00e5df3cd6b8d2124a6eaec6a2d4b6a1c5f37b7efad17fcc17"
 
 [[package]]
 name = "zerocopy"

@@ -2,14 +2,11 @@ pub use zoon;
 
 use zoon::wasm_bindgen::throw_str;
 use zoon::web_sys::HtmlCanvasElement;
-use zoon::SendWrapper;
 use zoon::Task;
 use zoon::UnwrapThrowExt;
-use zoon::wasm_bindgen_futures;
 
 use std::future::Future;
-use std::rc::Rc;
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use std::borrow::Cow;
 
 use glyphon::{
@@ -80,8 +77,8 @@ fn create_graphics(
                     #[cfg(feature = "webgl")]
                     required_limits: wgpu::Limits::downlevel_webgl2_defaults()
                         .using_resolution(adapter.limits()),
+                    trace: wgpu::Trace::Off,
                 },
-                None,
             )
             .await
             .unwrap_throw();
@@ -112,7 +109,7 @@ fn create_graphics(
         text_buffer.set_text(
             &mut font_system,
             "Hello world!",
-            Attrs::new().family(Family::Monospace),
+            &Attrs::new().family(Family::Monospace),
             Shaping::Advanced,
         );
         text_buffer.shape_until_scroll(&mut font_system, false);
