@@ -2,6 +2,8 @@ pub use zoon;
 
 use zoon::wasm_bindgen::throw_str;
 use zoon::web_sys::HtmlCanvasElement;
+use zoon::SendWrapper;
+use zoon::Task;
 use zoon::UnwrapThrowExt;
 use zoon::wasm_bindgen_futures;
 
@@ -15,15 +17,7 @@ use glyphon::{
     SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
 };
 
-use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration};
-use winit::platform::web::{EventLoopExtWebSys, WindowAttributesExtWebSys};
-use winit::{
-    application::ApplicationHandler,
-    dpi::{LogicalSize, PhysicalSize},
-    event::WindowEvent,
-    event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-    window::{Window, WindowId},
-};
+use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget};
 
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
@@ -50,29 +44,19 @@ pub enum Object2d {
     Text(Text),
 }
 
-static EVENT_LOOP: LazyLock<EventLoop<Graphics>> = LazyLock::new(|| {
-    EventLoop::with_user_event().build().unwrap_throw()
-});
-
 pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {
-    let app = Application::new(&EVENT_LOOP, canvas);
-    EVENT_LOOP.spawn_app(app);
+    Task::start(async move {
+        let mut graphics = create_graphics(canvas).await;
+        draw(&mut graphics)
+    });
 }
 
 fn create_graphics(
-    event_loop: &ActiveEventLoop,
     canvas: HtmlCanvasElement,
 ) -> impl Future<Output = Graphics> + 'static {
-    let window_attrs = Window::default_attributes()
-        .with_max_inner_size(LogicalSize::new(CANVAS_WIDTH, CANVAS_HEIGHT))
-        // NOTE: It has to be set to make it work in Firefox
-        .with_inner_size(LogicalSize::new(CANVAS_WIDTH, CANVAS_HEIGHT))
-        .with_canvas(Some(canvas));
-
-    let window = Rc::new(event_loop.create_window(window_attrs).unwrap_throw());
     let instance = wgpu::Instance::default();
     let surface = instance
-        .create_surface(window.clone())
+        .create_surface(SurfaceTarget::Canvas(canvas))
         .unwrap_or_else(|e| throw_str(&format!("{e:#?}")));
 
     async move {
@@ -102,11 +86,11 @@ fn create_graphics(
             .await
             .unwrap_throw();
 
-        let physical_size = window.inner_size();
-
         let surface_config = surface
-            .get_default_config(&adapter, physical_size.width, physical_size.height)
+            .get_default_config(&adapter, CANVAS_WIDTH, CANVAS_HEIGHT)
             .unwrap_throw();
+
+        surface.configure(&device, &surface_config);
 
         let swapchain_capabilities = surface.get_capabilities(&adapter);
         let swapchain_format = swapchain_capabilities.formats[0];
@@ -145,11 +129,80 @@ fn create_graphics(
             atlas,
             text_renderer,
             text_buffer,
-
-            window,
         }
     }
 }
+
+fn draw(gfx: &mut Graphics) {
+    gfx.viewport.update(
+        &gfx.queue,
+        Resolution {
+            width: gfx.surface_config.width,
+            height: gfx.surface_config.height,
+        },
+    );
+
+    gfx.text_renderer
+        .prepare(
+            &gfx.device,
+            &gfx.queue,
+            &mut gfx.font_system,
+            &mut gfx.atlas,
+            &gfx.viewport,
+            [TextArea {
+                buffer: &gfx.text_buffer,
+                left: 10.0,
+                top: 10.0,
+                scale: 1.0,
+                bounds: TextBounds {
+                    left: 0,
+                    top: 0,
+                    right: 600,
+                    bottom: 160,
+                },
+                default_color: Color::rgb(255, 255, 255),
+                custom_glyphs: &[],
+            }],
+            &mut gfx.swash_cache,
+        )
+        .unwrap();
+
+    let frame = gfx.surface.get_current_texture().unwrap_throw();
+    let view = frame.texture.create_view(&Default::default());
+    let mut encoder = gfx.device.create_command_encoder(&Default::default());
+
+    {
+        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        gfx.text_renderer
+            .render(&gfx.atlas, &gfx.viewport, &mut rpass)
+            .unwrap();
+    }
+
+    let command_buffer = encoder.finish();
+    gfx.queue.submit([command_buffer]);
+    frame.present();
+
+    gfx.atlas.trim();
+}
+
+// fn resized(&mut self, size: PhysicalSize<u32>) {
+//     let MaybeGraphics::Graphics(gfx) = &mut self.graphics else {
+//         return;
+//     };
+//     gfx.surface_config.width = size.width;
+//     gfx.surface_config.height = size.height;
+//     gfx.surface.configure(&gfx.device, &gfx.surface_config);
+// }
 
 #[allow(dead_code)]
 struct Graphics {
@@ -164,161 +217,30 @@ struct Graphics {
     atlas: glyphon::TextAtlas,
     text_renderer: glyphon::TextRenderer,
     text_buffer: glyphon::Buffer,
-
-    // Make sure that the winit window is last in the struct so that
-    // it is dropped after the wgpu surface is dropped, otherwise the
-    // program may crash when closed. This is probably a bug in wgpu.
-    window: Rc<Window>,
 }
 
-struct GraphicsBuilder {
-    event_loop_proxy: Option<EventLoopProxy<Graphics>>,
-    canvas: HtmlCanvasElement,
-}
+// impl ApplicationHandler<Graphics> for Application {
+//     fn window_event(
+//         &mut self,
+//         event_loop: &ActiveEventLoop,
+//         _window_id: WindowId,
+//         event: WindowEvent,
+//     ) {
+//         match event {
+//             WindowEvent::Resized(size) => self.resized(size),
+//             WindowEvent::RedrawRequested => self.draw(),
+//             WindowEvent::CloseRequested => event_loop.exit(),
+//             _ => (),
+//         }
+//     }
 
-impl GraphicsBuilder {
-    fn new(
-        event_loop_proxy: EventLoopProxy<Graphics>,
-        canvas: HtmlCanvasElement,
-    ) -> Self {
-        Self {
-            event_loop_proxy: Some(event_loop_proxy),
-            canvas,
-        }
-    }
+//     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+//         if let MaybeGraphics::Builder(builder) = &mut self.graphics {
+//             builder.build_and_send(event_loop);
+//         }
+//     }
 
-    fn build_and_send(&mut self, event_loop: &ActiveEventLoop) {
-        let Some(event_loop_proxy) = self.event_loop_proxy.take() else {
-            // event_loop_proxy is already spent - we already constructed Graphics
-            return;
-        };
-
-        let gfx_fut = create_graphics(event_loop, self.canvas.clone());
-        wasm_bindgen_futures::spawn_local(async move {
-            let gfx = gfx_fut.await;
-            assert!(event_loop_proxy.send_event(gfx).is_ok());
-        });
-    }
-}
-
-enum MaybeGraphics {
-    Builder(GraphicsBuilder),
-    Graphics(Graphics),
-}
-
-struct Application {
-    graphics: MaybeGraphics,
-}
-
-impl Application {
-    fn new(event_loop: &EventLoop<Graphics>, canvas: HtmlCanvasElement) -> Self {
-        Self {
-            graphics: MaybeGraphics::Builder(GraphicsBuilder::new(
-                event_loop.create_proxy(),
-                canvas,
-            )),
-        }
-    }
-
-    fn draw(&mut self) {
-        let MaybeGraphics::Graphics(gfx) = &mut self.graphics else {
-            // draw call rejected because graphics doesn't exist yet
-            return;
-        };
-
-        gfx.viewport.update(
-            &gfx.queue,
-            Resolution {
-                width: gfx.surface_config.width,
-                height: gfx.surface_config.height,
-            },
-        );
-
-        gfx.text_renderer
-            .prepare(
-                &gfx.device,
-                &gfx.queue,
-                &mut gfx.font_system,
-                &mut gfx.atlas,
-                &gfx.viewport,
-                [TextArea {
-                    buffer: &gfx.text_buffer,
-                    left: 10.0,
-                    top: 10.0,
-                    scale: 1.0,
-                    bounds: TextBounds {
-                        left: 0,
-                        top: 0,
-                        right: 600,
-                        bottom: 160,
-                    },
-                    default_color: Color::rgb(255, 255, 255),
-                    custom_glyphs: &[],
-                }],
-                &mut gfx.swash_cache,
-            )
-            .unwrap();
-
-        let frame = gfx.surface.get_current_texture().unwrap_throw();
-        let view = frame.texture.create_view(&Default::default());
-        let mut encoder = gfx.device.create_command_encoder(&Default::default());
-
-        {
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                ..Default::default()
-            });
-            gfx.text_renderer
-                .render(&gfx.atlas, &gfx.viewport, &mut rpass)
-                .unwrap();
-        }
-
-        let command_buffer = encoder.finish();
-        gfx.queue.submit([command_buffer]);
-        frame.present();
-
-        gfx.atlas.trim();
-    }
-
-    fn resized(&mut self, size: PhysicalSize<u32>) {
-        let MaybeGraphics::Graphics(gfx) = &mut self.graphics else {
-            return;
-        };
-        gfx.surface_config.width = size.width;
-        gfx.surface_config.height = size.height;
-        gfx.surface.configure(&gfx.device, &gfx.surface_config);
-    }
-}
-
-impl ApplicationHandler<Graphics> for Application {
-    fn window_event(
-        &mut self,
-        event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
-        event: WindowEvent,
-    ) {
-        match event {
-            WindowEvent::Resized(size) => self.resized(size),
-            WindowEvent::RedrawRequested => self.draw(),
-            WindowEvent::CloseRequested => event_loop.exit(),
-            _ => (),
-        }
-    }
-
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if let MaybeGraphics::Builder(builder) = &mut self.graphics {
-            builder.build_and_send(event_loop);
-        }
-    }
-
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, graphics: Graphics) {
-        self.graphics = MaybeGraphics::Graphics(graphics);
-    }
-}
+//     fn user_event(&mut self, _event_loop: &ActiveEventLoop, graphics: Graphics) {
+//         self.graphics = MaybeGraphics::Graphics(graphics);
+//     }
+// }
