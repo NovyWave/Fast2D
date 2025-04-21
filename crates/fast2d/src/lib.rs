@@ -7,7 +7,7 @@ use zoon::wasm_bindgen_futures;
 
 use std::future::Future;
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::borrow::Cow;
 
 use glyphon::{
@@ -50,10 +50,13 @@ pub enum Object2d {
     Text(Text),
 }
 
+static EVENT_LOOP: LazyLock<EventLoop<Graphics>> = LazyLock::new(|| {
+    EventLoop::with_user_event().build().unwrap_throw()
+});
+
 pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {
-    let event_loop = EventLoop::with_user_event().build().unwrap_throw();
-    let app = Application::new(&event_loop, canvas);
-    event_loop.spawn_app(app);
+    let app = Application::new(&EVENT_LOOP, canvas);
+    EVENT_LOOP.spawn_app(app);
 }
 
 fn create_graphics(
