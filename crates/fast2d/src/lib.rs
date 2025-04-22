@@ -9,68 +9,78 @@ use std::future::Future;
 use std::sync::Arc;
 use std::borrow::Cow;
 
+// Import glyphon types
 use glyphon::{
-    fontdb, Attrs, Buffer, Cache, Color, Family, FontSystem, Metrics, Resolution, Shaping,
-    SwashCache, TextArea, TextAtlas, TextBounds, TextRenderer, Viewport,
+    fontdb, Buffer, Cache, FontSystem, Resolution, Shaping,
+    SwashCache, TextArea, TextAtlas, TextRenderer, Viewport,
 };
 
-use lyon::math::{Box2D, Point, point};
-use lyon::path::{Winding, builder::BorderRadii};
-use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers};
-use lyon::tessellation::geometry_builder::simple_builder;
+// Import lyon types
+use lyon::math::{Box2D}; // Removed Size, Point, point
+use lyon::path::{Winding, Path}; // Added Path
+use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder}; // Added FillVertex, BuffersBuilder
+// Removed simple_builder import
 
-use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture};
+// Import wgpu types
+use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, Color as WgpuColor};
 use wgpu::util::DeviceExt;
+
+// Declare the object_2d module and re-export structs
+mod object_2d;
+pub use object_2d::text::Text;
+pub use object_2d::rectangle::Rectangle; // Add this line
 
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
 const MSAA_SAMPLE_COUNT: u32 = 4;
 
-pub struct Text {
-    text: Cow<'static, str>,
-}
+// Rectangle struct definition is removed from here
 
-impl Text {
-    pub fn new(text: impl Into<Cow<'static, str>>) -> Self {
-        Self {
-            text: text.into(),
-        }
-    }
-}
-
-impl Into<Object2d> for Text {
-    fn into(self) -> Object2d {
-        Object2d::Text(self)
-    }
-}
-
-pub struct Rectangle {
-}
-
-impl Rectangle {
-    pub fn new() -> Self {
-        Self {
-        }
-    }
-}
-
-impl Into<Object2d> for Rectangle {
-    fn into(self) -> Object2d {
-        Object2d::Rectangle(self)
-    }
-}
-
+// Enum definition remains here
+#[derive(Debug, Clone)]
 pub enum Object2d {
     Text(Text),
-    Rectangle(Rectangle),
+    Rectangle(Rectangle), // Uses the imported Rectangle
 }
 
 pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {
     Task::start(async move {
         let mut graphics = create_graphics(canvas).await;
-        draw(&mut graphics)
+        draw(&mut graphics, &objects)
     });
 }
+
+// Define vertex structure for rectangles (matches shader)
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct RectVertex {
+    position: [f32; 2],
+    color: [f32; 4], // Add color field
+}
+
+impl RectVertex {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<RectVertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                // Position attribute
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0, // Corresponds to @location(0) in shader
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                // Color attribute
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                    shader_location: 1, // Corresponds to @location(1) in shader
+                    format: wgpu::VertexFormat::Float32x4,
+                },
+            ],
+        }
+    }
+}
+
 
 fn create_graphics(
     canvas: HtmlCanvasElement,
@@ -132,113 +142,36 @@ fn create_graphics(
             view_formats: &[],
         });
 
-
-
-
-        let mut font_system = {
+        let font_system = { // Removed mut
             // NOTE: Smaller and compressed font would be probably better
             let font_data = include_bytes!("../fonts/FiraCode-Regular.ttf");
+            // Consider loading other fonts needed by Text::family here
             FontSystem::new_with_fonts([fontdb::Source::Binary(Arc::new(font_data))])
         };
         let swash_cache = SwashCache::new();
         let cache = Cache::new(&device);
         let viewport = Viewport::new(&device, &cache);
         let mut atlas = TextAtlas::new(&device, &queue, &cache, swapchain_format);
-        // Use MSAA state for text renderer
         let text_renderer = TextRenderer::new(
             &mut atlas,
             &device,
             MultisampleState {
                 count: MSAA_SAMPLE_COUNT,
                 mask: !0,
-                alpha_to_coverage_enabled: false,
+                alpha_to_coverage_enabled: false, // Set true for better anti-aliased transparency?
             },
             None,
         );
-        let mut text_buffer = Buffer::new(&mut font_system, Metrics::new(30.0, 42.0));
 
-        text_buffer.set_text(
-            &mut font_system,
-            "Hello world!",
-            &Attrs::new().family(Family::Monospace),
-            Shaping::Advanced,
-        );
-        text_buffer.shape_until_scroll(&mut font_system, false);
-
-
-
-
-
-        let mut geometry: VertexBuffers<Point, u16> = VertexBuffers::new();
-        let mut geometry_builder = simple_builder(&mut geometry);
-        let options = FillOptions::tolerance(0.1);
-        let mut tessellator = FillTessellator::new();
-
-        let mut builder = tessellator.builder(
-            &options,
-            &mut geometry_builder,
-        );
-
-        builder.add_rounded_rectangle(
-            &Box2D { min: point(0.0, 0.0), max: point(100.0, 50.0) },
-            &BorderRadii {
-                top_left: 10.0,
-                top_right: 5.0,
-                bottom_left: 20.0,
-                bottom_right: 25.0,
-            },
-            Winding::Positive,
-        );
-
-        builder.build().unwrap_throw();
-
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&geometry.vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(&geometry.indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-
-        let index_count = geometry.indices.len() as u32;
-
+        // --- Rectangle Pipeline Setup ---
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Rectangle Shader"),
-            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(r#"
-                struct VertexInput {
-                    @location(0) position: vec2<f32>,
-                }
-
-                struct VertexOutput {
-                    @builtin(position) clip_position: vec4<f32>,
-                }
-
-                @vertex
-                fn vs_main(in: VertexInput) -> VertexOutput {
-                    var out: VertexOutput;
-                    // Center the rectangle: subtract half size (50, 25) before scaling
-                    let centered_pos = in.position - vec2<f32>(50.0, 25.0);
-                    // Scale position to be relative to half the canvas size
-                    let pos = centered_pos / vec2<f32>(175.0, 175.0);
-                    // Map to clip space (y is typically inverted in clip space vs screen space)
-                    out.clip_position = vec4<f32>(pos.x, -pos.y, 0.0, 1.0);
-                    return out;
-                }
-
-                @fragment
-                fn fs_main() -> @location(0) vec4<f32> {
-                    return vec4<f32>(1.0, 0.0, 0.0, 1.0); // Red color
-                }
-            "#)),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shaders/rectangle.wgsl"))), // Load from file
         });
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Rectangle Pipeline Layout"),
-            bind_group_layouts: &[],
+            bind_group_layouts: &[], // Add bind group layouts if using uniforms/textures
             push_constant_ranges: &[],
         });
 
@@ -248,42 +181,33 @@ fn create_graphics(
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                compilation_options: <_>::default(),
-                buffers: &[wgpu::VertexBufferLayout {
-                    array_stride: std::mem::size_of::<Point>() as wgpu::BufferAddress,
-                    step_mode: wgpu::VertexStepMode::Vertex,
-                    attributes: &[wgpu::VertexAttribute {
-                        offset: 0,
-                        shader_location: 0,
-                        format: wgpu::VertexFormat::Float32x2,
-                    }],
-                }],
+                compilation_options: Default::default(),
+                buffers: &[RectVertex::desc()], // Restore buffer layout
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: Some("fs_main"),
-                compilation_options: <_>::default(),
+                compilation_options: Default::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: swapchain_format,
-                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING), // Enable blending
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Ccw, // Changed to Ccw because of potential y-flip effect
-                cull_mode: None, // Disable culling for simplicity or set to Back if needed
+                front_face: wgpu::FrontFace::Ccw, // Lyon outputs CCW
+                cull_mode: None, // Disable culling or set Some(wgpu::Face::Back)
                 polygon_mode: wgpu::PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false,
             },
             depth_stencil: None,
-            // Use MSAA state for rectangle pipeline
             multisample: MultisampleState {
                 count: MSAA_SAMPLE_COUNT,
                 mask: !0,
-                alpha_to_coverage_enabled: false, // Usually false for opaque geometry
+                alpha_to_coverage_enabled: false,
             },
             multiview: None,
             cache: None,
@@ -301,17 +225,18 @@ fn create_graphics(
             viewport,
             atlas,
             text_renderer,
-            text_buffer,
-            
-            vertex_buffer,
-            index_buffer,
-            index_count,
-            rect_pipeline,
+
+            // Remove old buffer fields
+            // vertex_buffer,
+            // index_buffer,
+            // index_count,
+            rect_pipeline, // Keep the pipeline
         }
     }
 }
 
-fn draw(gfx: &mut Graphics) {
+// Update draw function
+fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
     gfx.viewport.update(
         &gfx.queue,
         Resolution {
@@ -320,6 +245,38 @@ fn draw(gfx: &mut Graphics) {
         },
     );
 
+    // --- Text Preparation ---
+    // Filter out Text objects first
+    let text_objects: Vec<&Text> = objects.iter().filter_map(|obj| {
+        if let Object2d::Text(text) = obj { Some(text) } else { None }
+    }).collect();
+
+    // Create owned Buffers
+    let text_buffers: Vec<Buffer> = text_objects.iter().map(|&text_obj| { // Removed mut
+        let mut buffer = Buffer::new(&mut gfx.font_system, text_obj.get_metrics());
+        buffer.set_text(
+            &mut gfx.font_system,
+            text_obj.get_text(),
+            &text_obj.get_attrs().as_attrs(),
+            Shaping::Advanced,
+        );
+        buffer.shape_until_scroll(&mut gfx.font_system, false);
+        buffer // Return the owned buffer
+    }).collect();
+
+    // Create TextAreas borrowing from text_buffers
+    let text_areas: Vec<TextArea> = text_objects.iter().zip(text_buffers.iter()).map(|(&text_obj, buffer)| {
+        TextArea {
+            buffer: buffer, // Reference the buffer living in text_buffers
+            left: text_obj.get_left(),
+            top: text_obj.get_top(),
+            scale: 1.0,
+            bounds: text_obj.get_text_bounds(),
+            default_color: text_obj.get_glyphon_color(),
+            custom_glyphs: &[],
+        }
+    }).collect();
+
     gfx.text_renderer
         .prepare(
             &gfx.device,
@@ -327,50 +284,89 @@ fn draw(gfx: &mut Graphics) {
             &mut gfx.font_system,
             &mut gfx.atlas,
             &gfx.viewport,
-            [TextArea {
-                buffer: &gfx.text_buffer,
-                left: 10.0,
-                top: 10.0,
-                scale: 1.0,
-                bounds: TextBounds {
-                    left: 0,
-                    top: 0,
-                    right: 600,
-                    bottom: 160,
-                },
-                default_color: Color::rgb(255, 255, 255),
-                custom_glyphs: &[],
-            }],
+            text_areas, // Pass the Vec<TextArea> which borrows from text_buffers
             &mut gfx.swash_cache,
         )
         .unwrap();
 
+    // --- Rectangle Preparation ---
+    let mut rect_tessellator = FillTessellator::new();
+    let mut rect_geometry: VertexBuffers<RectVertex, u16> = VertexBuffers::new();
+    // let mut has_rectangles = false; // Remove flag
+
+    for obj in objects {
+        if let Object2d::Rectangle(rect) = obj {
+            // has_rectangles = true; // Remove flag
+
+            let rect_color = [
+                rect.color.r as f32,
+                rect.color.g as f32,
+                rect.color.b as f32,
+                rect.color.a as f32,
+            ];
+
+            let mut path_builder = Path::builder();
+            path_builder.add_rounded_rectangle(
+                &Box2D::new(rect.position, rect.position + rect.size.to_vector()),
+                &rect.border_radii,
+                Winding::Positive,
+            );
+            let path = path_builder.build();
+
+            rect_tessellator.tessellate_path(
+                &path,
+                &FillOptions::default(),
+                &mut BuffersBuilder::new(&mut rect_geometry, |vertex: FillVertex| {
+                    RectVertex {
+                        position: vertex.position().to_array(),
+                        color: rect_color,
+                    }
+                }),
+            ).unwrap();
+        }
+    }
+    // Restore buffer creation
+    let rect_vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Rectangle Vertex Buffer"),
+        contents: bytemuck::cast_slice(&rect_geometry.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let rect_index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Rectangle Index Buffer"),
+        contents: bytemuck::cast_slice(&rect_geometry.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+    let rect_index_count = rect_geometry.indices.len() as u32; // Use count again
+
     let frame = gfx.surface.get_current_texture().unwrap_throw();
     let swap_chain_view = frame.texture.create_view(&Default::default());
-    let msaa_texture_view = gfx.msaa_texture.create_view(&Default::default()); // Create view from stored texture
+    let msaa_texture_view = gfx.msaa_texture.create_view(&Default::default());
     let mut encoder = gfx.device.create_command_encoder(&Default::default());
 
     {
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &msaa_texture_view, // Render to MSAA texture
-                resolve_target: Some(&swap_chain_view), // Resolve to swap chain texture
+                view: &msaa_texture_view,
+                resolve_target: Some(&swap_chain_view),
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                    store: wgpu::StoreOp::Discard, // Discard MSAA texture content after resolve
+                    load: wgpu::LoadOp::Clear(WgpuColor::BLACK),
+                    store: wgpu::StoreOp::Discard,
                 },
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
         });
-        
-        rpass.set_pipeline(&gfx.rect_pipeline);
-        rpass.set_vertex_buffer(0, gfx.vertex_buffer.slice(..));
-        rpass.set_index_buffer(gfx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        rpass.draw_indexed(0..gfx.index_count, 0, 0..1);
-        
+
+        // Restore drawing using buffers and indices
+        if rect_index_count > 0 { // Use rect_index_count again
+            rpass.set_pipeline(&gfx.rect_pipeline);
+            rpass.set_vertex_buffer(0, rect_vertex_buffer.slice(..)); // Restore
+            rpass.set_index_buffer(rect_index_buffer.slice(..), wgpu::IndexFormat::Uint16); // Restore
+            rpass.draw_indexed(0..rect_index_count, 0, 0..1); // Restore indexed draw
+        }
+
         gfx.text_renderer
             .render(&gfx.atlas, &gfx.viewport, &mut rpass)
             .unwrap();
@@ -379,18 +375,8 @@ fn draw(gfx: &mut Graphics) {
     let command_buffer = encoder.finish();
     gfx.queue.submit([command_buffer]);
     frame.present();
-
     gfx.atlas.trim();
 }
-
-// fn resized(&mut self, size: PhysicalSize<u32>) {
-//     let MaybeGraphics::Graphics(gfx) = &mut self.graphics else {
-//         return;
-//     };
-//     gfx.surface_config.width = size.width;
-//     gfx.surface_config.height = size.height;
-//     gfx.surface.configure(&gfx.device, &gfx.surface_config);
-// }
 
 #[allow(dead_code)]
 struct Graphics {
@@ -398,43 +384,17 @@ struct Graphics {
     queue: Queue,
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
-    msaa_texture: Texture, // Add field for MSAA texture
+    msaa_texture: Texture,
 
     font_system: FontSystem,
     swash_cache: SwashCache,
     viewport: glyphon::Viewport,
     atlas: glyphon::TextAtlas,
     text_renderer: glyphon::TextRenderer,
-    text_buffer: glyphon::Buffer,
-    
-    vertex_buffer: wgpu::Buffer,
-    index_buffer: wgpu::Buffer,
-    index_count: u32,
+
+    // Only store the pipeline for rectangles
     rect_pipeline: wgpu::RenderPipeline,
 }
 
-// impl ApplicationHandler<Graphics> for Application {
-//     fn window_event(
-//         &mut self,
-//         event_loop: &ActiveEventLoop,
-//         _window_id: WindowId,
-//         event: WindowEvent,
-//     ) {
-//         match event {
-//             WindowEvent::Resized(size) => self.resized(size),
-//             WindowEvent::RedrawRequested => self.draw(),
-//             WindowEvent::CloseRequested => event_loop.exit(),
-//             _ => (),
-//         }
-//     }
-
-//     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-//         if let MaybeGraphics::Builder(builder) = &mut self.graphics {
-//             builder.build_and_send(event_loop);
-//         }
-//     }
-
-//     fn user_event(&mut self, _event_loop: &ActiveEventLoop, graphics: Graphics) {
-//         self.graphics = MaybeGraphics::Graphics(graphics);
-//     }
-// }
+// Create a shaders directory and the rectangle shader file
+// src/shaders/rectangle.wgsl

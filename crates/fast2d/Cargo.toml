@@ -21,6 +21,7 @@ glyphon = "0.9.0"
 lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", features = ["extra"] }
 bytemuck = { version = "*", features = ["derive"] }
 euclid = { version = "*", features = ["bytemuck"] }
+smol_str = "0.2"
 
 [features]
 # @TODO replace `webgl` with `webgpu` once all relevant browsers and WebViews support WebGPU 
