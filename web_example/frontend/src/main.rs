@@ -24,14 +24,40 @@ fn root() -> impl Element {
         .s(Background::new().color(color!("Black")))
         .item(panel_with_canvas(|canvas| { 
             fast2d::run(canvas, vec![
-                fast2d::Text::new("Hello, world!").into(),
-                fast2d::Rectangle::new().into(),
+                fast2d::Text::new()
+                    .position(10, 10)
+                    .text("Hello, world!")
+                    .font_size(30)
+                    .line_height(42)
+                    .color(255, 255, 255, 1)
+                    .family("FiraCode")
+                    .bounds(0, 0, 600, 160)
+                    .into(),
+                fast2d::Rectangle::new()
+                    .position(100, 100)
+                    .size(100, 50)
+                    .color(0, 255, 0, 1)
+                    .rounded_corners(10, 5, 20, 25)
+                    .into(),
             ])
         }))
         .item(panel_with_canvas(|canvas| { 
             fast2d::run(canvas, vec![
-                fast2d::Text::new("Hello from Fast2D!").into(),
-                fast2d::Rectangle::new().into(),
+                fast2d::Text::new()
+                    .text("Hello from Fast2D!")
+                    .size(30)
+                    .line_height(42)
+                    .color(255, 255, 255)
+                    .family("FiraCode")
+                    .position(10, 10)
+                    .bounds(0, 0, 600, 160)
+                    .into(),
+                fast2d::Rectangle::new()
+                    .position(100, 100)
+                    .size(100, 50)
+                    .color(255, 0, 0, 1)
+                    .rounded_corners(10, 5, 20, 25)
+                    .into(),
             ])
         }))
 }
