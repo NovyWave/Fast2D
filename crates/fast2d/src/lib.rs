@@ -194,7 +194,9 @@ fn create_graphics(
                 @vertex
                 fn vs_main(in: VertexInput) -> VertexOutput {
                     var out: VertexOutput;
-                    out.clip_position = vec4<f32>(in.position / vec2<f32>(175.0, 175.0) - vec2<f32>(1.0, 1.0), 0.0, 1.0);
+                    // Scale position to be relative to half the canvas size
+                    let pos = in.position / vec2<f32>(175.0, 175.0);
+                    out.clip_position = vec4<f32>(pos.x - 1.0, 1.0 - pos.y, 0.0, 1.0);
                     return out;
                 }
 
@@ -242,7 +244,7 @@ fn create_graphics(
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Cw,
-                cull_mode: Some(wgpu::Face::Back),
+                cull_mode: None,
                 polygon_mode: wgpu::PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false,
