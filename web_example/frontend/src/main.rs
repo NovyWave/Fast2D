@@ -1,15 +1,5 @@
 use fast2d::zoon::*;
 
-// @TODO remove
-// #[allow(dead_code)]
-// mod hello_triangle;
-
-// #[allow(dead_code)]
-// mod hello_world;
-
-// #[allow(dead_code)]
-// mod rust_logo;
-
 // @TODO remove this together with the same code in the `lib.rs` file
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
