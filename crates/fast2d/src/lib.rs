@@ -20,6 +20,7 @@ use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers};
 use lyon::tessellation::geometry_builder::simple_builder;
 
 use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget};
+use wgpu::util::DeviceExt;
 
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
@@ -117,7 +118,6 @@ fn create_graphics(
 
 
 
-        // Set up text renderer
         let mut font_system = {
             // NOTE: Smaller and compressed font would be probably better
             let font_data = include_bytes!("../fonts/FiraCode-Regular.ttf");
@@ -166,14 +166,92 @@ fn create_graphics(
 
         builder.build().unwrap_throw();
 
-        // The tessellated geometry is ready to be uploaded to the GPU.
-        zoon::println!(" -- {} vertices {} indices",
-            geometry.vertices.len(),
-            geometry.indices.len()
-        );
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&geometry.vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
 
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(&geometry.indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
 
+        let index_count = geometry.indices.len() as u32;
 
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Rectangle Shader"),
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(r#"
+                struct VertexInput {
+                    @location(0) position: vec2<f32>,
+                }
+
+                struct VertexOutput {
+                    @builtin(position) clip_position: vec4<f32>,
+                }
+
+                @vertex
+                fn vs_main(in: VertexInput) -> VertexOutput {
+                    var out: VertexOutput;
+                    out.clip_position = vec4<f32>(in.position / vec2<f32>(175.0, 175.0) - vec2<f32>(1.0, 1.0), 0.0, 1.0);
+                    return out;
+                }
+
+                @fragment
+                fn fs_main() -> @location(0) vec4<f32> {
+                    return vec4<f32>(1.0, 0.0, 0.0, 1.0); // Red color
+                }
+            "#)),
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Rectangle Pipeline Layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        });
+
+        let rect_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Rectangle Pipeline"),
+            layout: Some(&pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                compilation_options: <_>::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Point>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[wgpu::VertexAttribute {
+                        offset: 0,
+                        shader_location: 0,
+                        format: wgpu::VertexFormat::Float32x2,
+                    }],
+                }],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("fs_main"),
+                compilation_options: <_>::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: swapchain_format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Cw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
 
         Graphics {
             device,
@@ -187,6 +265,11 @@ fn create_graphics(
             atlas,
             text_renderer,
             text_buffer,
+            
+            vertex_buffer,
+            index_buffer,
+            index_count,
+            rect_pipeline,
         }
     }
 }
@@ -241,6 +324,12 @@ fn draw(gfx: &mut Graphics) {
             })],
             ..Default::default()
         });
+        
+        rpass.set_pipeline(&gfx.rect_pipeline);
+        rpass.set_vertex_buffer(0, gfx.vertex_buffer.slice(..));
+        rpass.set_index_buffer(gfx.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        rpass.draw_indexed(0..gfx.index_count, 0, 0..1);
+        
         gfx.text_renderer
             .render(&gfx.atlas, &gfx.viewport, &mut rpass)
             .unwrap();
@@ -275,6 +364,11 @@ struct Graphics {
     atlas: glyphon::TextAtlas,
     text_renderer: glyphon::TextRenderer,
     text_buffer: glyphon::Buffer,
+    
+    vertex_buffer: wgpu::Buffer,
+    index_buffer: wgpu::Buffer,
+    index_count: u32,
+    rect_pipeline: wgpu::RenderPipeline,
 }
 
 // impl ApplicationHandler<Graphics> for Application {
