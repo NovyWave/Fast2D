@@ -19,11 +19,12 @@ use lyon::path::{Winding, builder::BorderRadii};
 use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers};
 use lyon::tessellation::geometry_builder::simple_builder;
 
-use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget};
+use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture};
 use wgpu::util::DeviceExt;
 
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
+const MSAA_SAMPLE_COUNT: u32 = 4;
 
 pub struct Text {
     text: Cow<'static, str>,
@@ -115,6 +116,22 @@ fn create_graphics(
         let swapchain_capabilities = surface.get_capabilities(&adapter);
         let swapchain_format = swapchain_capabilities.formats[0];
 
+        // Create multisample texture
+        let msaa_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("MSAA Texture"),
+            size: wgpu::Extent3d {
+                width: surface_config.width,
+                height: surface_config.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: MSAA_SAMPLE_COUNT,
+            dimension: wgpu::TextureDimension::D2,
+            format: swapchain_format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+
 
 
 
@@ -127,8 +144,17 @@ fn create_graphics(
         let cache = Cache::new(&device);
         let viewport = Viewport::new(&device, &cache);
         let mut atlas = TextAtlas::new(&device, &queue, &cache, swapchain_format);
-        let text_renderer =
-            TextRenderer::new(&mut atlas, &device, MultisampleState::default(), None);
+        // Use MSAA state for text renderer
+        let text_renderer = TextRenderer::new(
+            &mut atlas,
+            &device,
+            MultisampleState {
+                count: MSAA_SAMPLE_COUNT,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            None,
+        );
         let mut text_buffer = Buffer::new(&mut font_system, Metrics::new(30.0, 42.0));
 
         text_buffer.set_text(
@@ -194,9 +220,12 @@ fn create_graphics(
                 @vertex
                 fn vs_main(in: VertexInput) -> VertexOutput {
                     var out: VertexOutput;
+                    // Center the rectangle: subtract half size (50, 25) before scaling
+                    let centered_pos = in.position - vec2<f32>(50.0, 25.0);
                     // Scale position to be relative to half the canvas size
-                    let pos = in.position / vec2<f32>(175.0, 175.0);
-                    out.clip_position = vec4<f32>(pos.x - 1.0, 1.0 - pos.y, 0.0, 1.0);
+                    let pos = centered_pos / vec2<f32>(175.0, 175.0);
+                    // Map to clip space (y is typically inverted in clip space vs screen space)
+                    out.clip_position = vec4<f32>(pos.x, -pos.y, 0.0, 1.0);
                     return out;
                 }
 
@@ -243,14 +272,19 @@ fn create_graphics(
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 strip_index_format: None,
-                front_face: wgpu::FrontFace::Cw,
-                cull_mode: None,
+                front_face: wgpu::FrontFace::Ccw, // Changed to Ccw because of potential y-flip effect
+                cull_mode: None, // Disable culling for simplicity or set to Back if needed
                 polygon_mode: wgpu::PolygonMode::Fill,
                 unclipped_depth: false,
                 conservative: false,
             },
             depth_stencil: None,
-            multisample: MultisampleState::default(),
+            // Use MSAA state for rectangle pipeline
+            multisample: MultisampleState {
+                count: MSAA_SAMPLE_COUNT,
+                mask: !0,
+                alpha_to_coverage_enabled: false, // Usually false for opaque geometry
+            },
             multiview: None,
             cache: None,
         });
@@ -260,6 +294,7 @@ fn create_graphics(
             queue,
             surface,
             surface_config,
+            msaa_texture,
 
             font_system,
             swash_cache,
@@ -311,20 +346,24 @@ fn draw(gfx: &mut Graphics) {
         .unwrap();
 
     let frame = gfx.surface.get_current_texture().unwrap_throw();
-    let view = frame.texture.create_view(&Default::default());
+    let swap_chain_view = frame.texture.create_view(&Default::default());
+    let msaa_texture_view = gfx.msaa_texture.create_view(&Default::default()); // Create view from stored texture
     let mut encoder = gfx.device.create_command_encoder(&Default::default());
 
     {
         let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
-                resolve_target: None,
+                view: &msaa_texture_view, // Render to MSAA texture
+                resolve_target: Some(&swap_chain_view), // Resolve to swap chain texture
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                    store: wgpu::StoreOp::Store,
+                    store: wgpu::StoreOp::Discard, // Discard MSAA texture content after resolve
                 },
             })],
-            ..Default::default()
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
         
         rpass.set_pipeline(&gfx.rect_pipeline);
@@ -359,6 +398,7 @@ struct Graphics {
     queue: Queue,
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
+    msaa_texture: Texture, // Add field for MSAA texture
 
     font_system: FontSystem,
     swash_cache: SwashCache,
