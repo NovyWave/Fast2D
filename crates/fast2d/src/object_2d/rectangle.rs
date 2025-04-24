@@ -9,6 +9,8 @@ pub struct Rectangle {
     pub size: Size,      // Made public
     pub color: WgpuColor,// Made public
     pub border_radii: BorderRadii, // Made public
+    pub border_width: Option<f32>, // Added
+    pub border_color: Option<WgpuColor>, // Added
     // Add other fields as needed, e.g., border width, border color
 }
 
@@ -19,6 +21,8 @@ impl Rectangle {
             size: Size::new(10.0, 10.0), // Default size
             color: WgpuColor { r: 0.5, g: 0.5, b: 0.5, a: 1.0 }, // Default gray
             border_radii: BorderRadii::default(), // No rounding by default
+            border_width: None, // Added
+            border_color: None, // Added
         }
     }
 
@@ -49,6 +53,30 @@ impl Rectangle {
             bottom_left: bottom_left as f32,
             bottom_right: bottom_right as f32,
         };
+        self
+    }
+
+    // New border method
+    pub fn border(mut self, width: u32, r: u8, g: u8, b: u8, a: f64) -> Self {
+        self.border_width = Some(width as f32);
+        self.border_color = Some(WgpuColor {
+            r: r as f64 / 255.0,
+            g: g as f64 / 255.0,
+            b: b as f64 / 255.0,
+            a: a,
+        });
+        self
+    }
+
+    // Renamed back to inner_border
+    pub fn inner_border(mut self, width: u32, r: u8, g: u8, b: u8, a: f64) -> Self {
+        self.border_width = Some(width as f32);
+        self.border_color = Some(WgpuColor {
+            r: r as f64 / 255.0,
+            g: g as f64 / 255.0,
+            b: b as f64 / 255.0,
+            a: a,
+        });
         self
     }
 

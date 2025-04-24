@@ -16,10 +16,10 @@ use glyphon::{
 };
 
 // Import lyon types
-use lyon::math::{Box2D}; // Removed Size, Point, point
-use lyon::path::{Winding, Path}; // Added Path
-use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder}; // Added FillVertex, BuffersBuilder
-// Removed simple_builder import
+use lyon::math::{Box2D, Vector, Size}; // Added Vector, Size
+use lyon::path::{Winding, Path};
+use lyon::path::builder::BorderRadii; // Added BorderRadii back
+use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder, StrokeTessellator, StrokeOptions, StrokeVertex, LineCap, LineJoin}; // Added stroke types
 
 // Import wgpu types
 use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, Color as WgpuColor};
@@ -32,7 +32,7 @@ pub use object_2d::rectangle::Rectangle; // Add this line
 
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
-const MSAA_SAMPLE_COUNT: u32 = 4;
+const MSAA_SAMPLE_COUNT: u32 = 4; // Multisampling for anti-aliasing
 
 // Rectangle struct definition is removed from here
 
@@ -50,18 +50,18 @@ pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {
     });
 }
 
-// Define vertex structure for rectangles (matches shader)
+// Define vertex structure for rectangles (matches shader) - Renamed
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-struct RectVertex {
+struct ColoredVertex { // Renamed from RectVertex
     position: [f32; 2],
-    color: [f32; 4], // Add color field
+    color: [f32; 4],
 }
 
-impl RectVertex {
+impl ColoredVertex { // Renamed from RectVertex
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<RectVertex>() as wgpu::BufferAddress,
+            array_stride: std::mem::size_of::<ColoredVertex>() as wgpu::BufferAddress, // Use renamed struct
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 // Position attribute
@@ -182,7 +182,7 @@ fn create_graphics(
                 module: &shader,
                 entry_point: Some("vs_main"),
                 compilation_options: Default::default(),
-                buffers: &[RectVertex::desc()], // Restore buffer layout
+                buffers: &[ColoredVertex::desc()], // Use renamed struct desc
             },
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
@@ -290,54 +290,130 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
         .unwrap();
 
     // --- Rectangle Preparation ---
-    let mut rect_tessellator = FillTessellator::new();
-    let mut rect_geometry: VertexBuffers<RectVertex, u16> = VertexBuffers::new();
-    // let mut has_rectangles = false; // Remove flag
+    // Fill Geometry
+    let mut fill_tessellator = FillTessellator::new();
+    let mut fill_geometry: VertexBuffers<ColoredVertex, u16> = VertexBuffers::new(); // Use renamed struct
+
+    // Border Geometry
+    let mut stroke_tessellator = StrokeTessellator::new();
+    let mut border_geometry: VertexBuffers<ColoredVertex, u16> = VertexBuffers::new(); // Use renamed struct
 
     for obj in objects {
         if let Object2d::Rectangle(rect) = obj {
-            // has_rectangles = true; // Remove flag
+            let mut outer_path_builder = Path::builder();
+            outer_path_builder.add_rounded_rectangle(
+                &Box2D::new(rect.position, rect.position + rect.size.to_vector()),
+                &rect.border_radii,
+                Winding::Positive,
+            );
+            let outer_path = outer_path_builder.build(); // Path for the stroke
 
-            let rect_color = [
+            // --- Tessellate Fill (using potentially inset path) ---
+            let fill_color = [
                 rect.color.r as f32,
                 rect.color.g as f32,
                 rect.color.b as f32,
                 rect.color.a as f32,
             ];
 
-            let mut path_builder = Path::builder();
-            path_builder.add_rounded_rectangle(
-                &Box2D::new(rect.position, rect.position + rect.size.to_vector()),
-                &rect.border_radii,
-                Winding::Positive,
-            );
-            let path = path_builder.build();
+            let fill_path = if let Some(border_width) = rect.border_width {
+                // Inset the path for fill if there's a border
+                let half_border_width = border_width / 2.0;
+                let inner_pos = rect.position + Vector::new(half_border_width, half_border_width);
+                // Ensure size doesn't go negative
+                let inner_size = Size::new(
+                    (rect.size.width - border_width).max(0.0),
+                    (rect.size.height - border_width).max(0.0)
+                );
+                // Adjust radii, clamping at 0
+                let inner_radii = BorderRadii {
+                    top_left: (rect.border_radii.top_left - half_border_width).max(0.0),
+                    top_right: (rect.border_radii.top_right - half_border_width).max(0.0),
+                    bottom_right: (rect.border_radii.bottom_right - half_border_width).max(0.0),
+                    bottom_left: (rect.border_radii.bottom_left - half_border_width).max(0.0),
+                };
 
-            rect_tessellator.tessellate_path(
-                &path,
+                let mut inner_path_builder = Path::builder();
+                inner_path_builder.add_rounded_rectangle(
+                    &Box2D::new(inner_pos, inner_pos + inner_size.to_vector()),
+                    &inner_radii,
+                    Winding::Positive,
+                );
+                inner_path_builder.build()
+            } else {
+                // No border, use the outer path for fill
+                outer_path.clone() // Clone the outer path
+            };
+
+
+            fill_tessellator.tessellate_path(
+                &fill_path, // Use the potentially inset path
                 &FillOptions::default(),
-                &mut BuffersBuilder::new(&mut rect_geometry, |vertex: FillVertex| {
-                    RectVertex {
+                &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
+                    ColoredVertex {
                         position: vertex.position().to_array(),
-                        color: rect_color,
+                        color: fill_color,
                     }
                 }),
             ).unwrap();
+
+            // --- Tessellate Border (using outer path) ---
+            if let (Some(border_width), Some(border_color_wgpu)) = (rect.border_width, rect.border_color) {
+                let border_color = [
+                    border_color_wgpu.r as f32,
+                    border_color_wgpu.g as f32,
+                    border_color_wgpu.b as f32,
+                    border_color_wgpu.a as f32,
+                ];
+                let mut stroke_options = StrokeOptions::default();
+                stroke_options.line_width = border_width;
+                stroke_options.start_cap = LineCap::Round; // Use start_cap
+                stroke_options.end_cap = LineCap::Round;   // Use end_cap
+                stroke_options.line_join = LineJoin::Round;
+
+                // Stroke the *outer* path
+                stroke_tessellator.tessellate_path(
+                    &outer_path, // Use the original outer path
+                    &stroke_options,
+                    &mut BuffersBuilder::new(&mut border_geometry, |vertex: StrokeVertex| {
+                        ColoredVertex {
+                            position: vertex.position().to_array(),
+                            color: border_color,
+                        }
+                    }),
+                ).unwrap();
+            }
         }
     }
-    // Restore buffer creation
-    let rect_vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Rectangle Vertex Buffer"),
-        contents: bytemuck::cast_slice(&rect_geometry.vertices),
+
+    // --- Create Fill Buffers ---
+    let fill_vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Rectangle Fill Vertex Buffer"), // Renamed label
+        contents: bytemuck::cast_slice(&fill_geometry.vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
-    let rect_index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Rectangle Index Buffer"),
-        contents: bytemuck::cast_slice(&rect_geometry.indices),
+    let fill_index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Rectangle Fill Index Buffer"), // Renamed label
+        contents: bytemuck::cast_slice(&fill_geometry.indices),
         usage: wgpu::BufferUsages::INDEX,
     });
-    let rect_index_count = rect_geometry.indices.len() as u32; // Use count again
+    let fill_index_count = fill_geometry.indices.len() as u32;
 
+    // --- Create Border Buffers ---
+    let border_vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Rectangle Border Vertex Buffer"),
+        contents: bytemuck::cast_slice(&border_geometry.vertices),
+        usage: wgpu::BufferUsages::VERTEX,
+    });
+    let border_index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Rectangle Border Index Buffer"),
+        contents: bytemuck::cast_slice(&border_geometry.indices),
+        usage: wgpu::BufferUsages::INDEX,
+    });
+    let border_index_count = border_geometry.indices.len() as u32;
+
+
+    // ... get frame, views, encoder ...
     let frame = gfx.surface.get_current_texture().unwrap_throw();
     let swap_chain_view = frame.texture.create_view(&Default::default());
     let msaa_texture_view = gfx.msaa_texture.create_view(&Default::default());
@@ -359,14 +435,23 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
             occlusion_query_set: None,
         });
 
-        // Restore drawing using buffers and indices
-        if rect_index_count > 0 { // Use rect_index_count again
-            rpass.set_pipeline(&gfx.rect_pipeline);
-            rpass.set_vertex_buffer(0, rect_vertex_buffer.slice(..)); // Restore
-            rpass.set_index_buffer(rect_index_buffer.slice(..), wgpu::IndexFormat::Uint16); // Restore
-            rpass.draw_indexed(0..rect_index_count, 0, 0..1); // Restore indexed draw
+        rpass.set_pipeline(&gfx.rect_pipeline); // Use the same pipeline for both
+
+        // Draw Fill
+        if fill_index_count > 0 {
+            rpass.set_vertex_buffer(0, fill_vertex_buffer.slice(..));
+            rpass.set_index_buffer(fill_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            rpass.draw_indexed(0..fill_index_count, 0, 0..1);
         }
 
+        // Draw Border (if it exists)
+        if border_index_count > 0 {
+            rpass.set_vertex_buffer(0, border_vertex_buffer.slice(..)); // Set border buffer
+            rpass.set_index_buffer(border_index_buffer.slice(..), wgpu::IndexFormat::Uint16); // Set border buffer
+            rpass.draw_indexed(0..border_index_count, 0, 0..1); // Draw border
+        }
+
+        // Render text on top
         gfx.text_renderer
             .render(&gfx.atlas, &gfx.viewport, &mut rpass)
             .unwrap();

@@ -43,10 +43,11 @@ fn root() -> impl Element {
                     .bounds(0, 0, 600, 160)
                     .into(),
                 fast2d::Rectangle::new()
-                    .position(100, 200)
+                    .position(100, 200) // Adjusted Y position for visibility if needed
                     .size(150, 100)
                     .color(255, 0, 0, 1.0)
                     .rounded_corners(40, 10, 40, 10)
+                    .inner_border(5, 255, 255, 255, 1.0) // Renamed method back
                     .into(),
             ])
         }))
