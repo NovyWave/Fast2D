@@ -1,8 +1,8 @@
 use fast2d::zoon::*;
 
 // @TODO remove this together with the same code in the `lib.rs` file
-const CANVAS_WIDTH: u32 = 350;
-const CANVAS_HEIGHT: u32 = 350;
+// const CANVAS_WIDTH: u32 = 350; // Removed fixed width
+// const CANVAS_HEIGHT: u32 = 350; // Removed fixed height
 
 pub fn main() {
     start_app("app", root);
@@ -10,7 +10,8 @@ pub fn main() {
 
 fn root() -> impl Element {
     Column::new()
-        .s(Height::fill())
+        .s(Height::fill()) // Ensure column fills height
+        .s(Width::fill()) // Ensure column fills width
         .s(Background::new().color(color!("Black")))
         .item(panel_with_canvas(|canvas| { 
             fast2d::run(canvas, vec![
@@ -67,10 +68,15 @@ fn panel_with_canvas(
         .s(Align::center())
         .s(Clip::both())
         .s(Borders::all(Border::new().color(color!("Gray"))))
+        // Give the panel a size constraint (e.g., fill available space up to a max)
+        .s(Width::fill().max(700)) // Example max width
+        .s(Height::fill().max(350)) // Example max height
         .child(
             Canvas::new()
-                .width(CANVAS_WIDTH)
-                .height(CANVAS_HEIGHT)
+                .width(0) // Add initial width to satisfy type system
+                .height(0) // Add initial height to satisfy type system
+                .s(Width::fill()) // Style will override layout width
+                .s(Height::fill()) // Added fill height style
                 .after_insert(example_runner),
         )
 }
