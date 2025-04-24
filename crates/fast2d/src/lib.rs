@@ -29,6 +29,7 @@ use wgpu::util::DeviceExt;
 mod object_2d;
 pub use object_2d::text::Text;
 pub use object_2d::rectangle::Rectangle; // Add this line
+pub use object_2d::circle::Circle; // Added
 
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
@@ -41,6 +42,7 @@ const MSAA_SAMPLE_COUNT: u32 = 4; // Multisampling for anti-aliasing
 pub enum Object2d {
     Text(Text),
     Rectangle(Rectangle), // Uses the imported Rectangle
+    Circle(Circle), // Added
 }
 
 pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {
@@ -299,89 +301,166 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
     let mut border_geometry: VertexBuffers<ColoredVertex, u16> = VertexBuffers::new(); // Use renamed struct
 
     for obj in objects {
-        if let Object2d::Rectangle(rect) = obj {
-            let mut outer_path_builder = Path::builder();
-            outer_path_builder.add_rounded_rectangle(
-                &Box2D::new(rect.position, rect.position + rect.size.to_vector()),
-                &rect.border_radii,
-                Winding::Positive,
-            );
-            let outer_path = outer_path_builder.build(); // Path for the stroke
-
-            // --- Tessellate Fill (using potentially inset path) ---
-            let fill_color = [
-                rect.color.r as f32,
-                rect.color.g as f32,
-                rect.color.b as f32,
-                rect.color.a as f32,
-            ];
-
-            let fill_path = if let Some(border_width) = rect.border_width {
-                // Inset the path for fill if there's a border
-                let half_border_width = border_width / 2.0;
-                let inner_pos = rect.position + Vector::new(half_border_width, half_border_width);
-                // Ensure size doesn't go negative
-                let inner_size = Size::new(
-                    (rect.size.width - border_width).max(0.0),
-                    (rect.size.height - border_width).max(0.0)
-                );
-                // Adjust radii, clamping at 0
-                let inner_radii = BorderRadii {
-                    top_left: (rect.border_radii.top_left - half_border_width).max(0.0),
-                    top_right: (rect.border_radii.top_right - half_border_width).max(0.0),
-                    bottom_right: (rect.border_radii.bottom_right - half_border_width).max(0.0),
-                    bottom_left: (rect.border_radii.bottom_left - half_border_width).max(0.0),
-                };
-
-                let mut inner_path_builder = Path::builder();
-                inner_path_builder.add_rounded_rectangle(
-                    &Box2D::new(inner_pos, inner_pos + inner_size.to_vector()),
-                    &inner_radii,
+        match obj {
+            Object2d::Rectangle(rect) => {
+                let mut outer_path_builder = Path::builder();
+                outer_path_builder.add_rounded_rectangle(
+                    &Box2D::new(rect.position, rect.position + rect.size.to_vector()),
+                    &rect.border_radii,
                     Winding::Positive,
                 );
-                inner_path_builder.build()
-            } else {
-                // No border, use the outer path for fill
-                outer_path.clone() // Clone the outer path
-            };
+                let outer_path = outer_path_builder.build(); // Path for the stroke
 
-
-            fill_tessellator.tessellate_path(
-                &fill_path, // Use the potentially inset path
-                &FillOptions::default(),
-                &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
-                    ColoredVertex {
-                        position: vertex.position().to_array(),
-                        color: fill_color,
-                    }
-                }),
-            ).unwrap();
-
-            // --- Tessellate Border (using outer path) ---
-            if let (Some(border_width), Some(border_color_wgpu)) = (rect.border_width, rect.border_color) {
-                let border_color = [
-                    border_color_wgpu.r as f32,
-                    border_color_wgpu.g as f32,
-                    border_color_wgpu.b as f32,
-                    border_color_wgpu.a as f32,
+                // --- Tessellate Fill (using potentially inset path) ---
+                let fill_color = [
+                    rect.color.r as f32,
+                    rect.color.g as f32,
+                    rect.color.b as f32,
+                    rect.color.a as f32,
                 ];
-                let mut stroke_options = StrokeOptions::default();
-                stroke_options.line_width = border_width;
-                stroke_options.start_cap = LineCap::Round; // Use start_cap
-                stroke_options.end_cap = LineCap::Round;   // Use end_cap
-                stroke_options.line_join = LineJoin::Round;
 
-                // Stroke the *outer* path
-                stroke_tessellator.tessellate_path(
-                    &outer_path, // Use the original outer path
-                    &stroke_options,
-                    &mut BuffersBuilder::new(&mut border_geometry, |vertex: StrokeVertex| {
+                let fill_path = if let Some(border_width) = rect.border_width {
+                    // Inset the path for fill if there's a border
+                    let half_border_width = border_width / 2.0;
+                    let inner_pos = rect.position + Vector::new(half_border_width, half_border_width);
+                    let inner_size = Size::new(
+                        (rect.size.width - border_width).max(0.0),
+                        (rect.size.height - border_width).max(0.0)
+                    );
+                    let inner_radii = BorderRadii {
+                        top_left: (rect.border_radii.top_left - half_border_width).max(0.0),
+                        top_right: (rect.border_radii.top_right - half_border_width).max(0.0),
+                        bottom_right: (rect.border_radii.bottom_right - half_border_width).max(0.0),
+                        bottom_left: (rect.border_radii.bottom_left - half_border_width).max(0.0),
+                    };
+
+                    let mut inner_path_builder = Path::builder();
+                    inner_path_builder.add_rounded_rectangle(
+                        &Box2D::new(inner_pos, inner_pos + inner_size.to_vector()),
+                        &inner_radii,
+                        Winding::Positive,
+                    );
+                    inner_path_builder.build()
+                } else {
+                    outer_path.clone()
+                };
+
+                fill_tessellator.tessellate_path(
+                    &fill_path,
+                    &FillOptions::default(),
+                    &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
                         ColoredVertex {
                             position: vertex.position().to_array(),
-                            color: border_color,
+                            color: fill_color,
                         }
                     }),
                 ).unwrap();
+
+                // --- Tessellate Border (using outer path) ---
+                if let (Some(border_width), Some(border_color_wgpu)) = (rect.border_width, rect.border_color) {
+                    let border_color = [
+                        border_color_wgpu.r as f32,
+                        border_color_wgpu.g as f32,
+                        border_color_wgpu.b as f32,
+                        border_color_wgpu.a as f32,
+                    ];
+                    let mut stroke_options = StrokeOptions::default();
+                    stroke_options.line_width = border_width;
+                    stroke_options.start_cap = LineCap::Round;
+                    stroke_options.end_cap = LineCap::Round;
+                    stroke_options.line_join = LineJoin::Round;
+
+                    stroke_tessellator.tessellate_path(
+                        &outer_path,
+                        &stroke_options,
+                        &mut BuffersBuilder::new(&mut border_geometry, |vertex: StrokeVertex| {
+                            ColoredVertex {
+                                position: vertex.position().to_array(),
+                                color: border_color,
+                            }
+                        }),
+                    ).unwrap();
+                }
+            }
+            Object2d::Circle(circle) => {
+                let mut outer_path_builder = Path::builder();
+                outer_path_builder.add_circle(circle.center, circle.radius, Winding::Positive);
+                let outer_path = outer_path_builder.build(); // Path for the stroke
+
+                // --- Tessellate Fill (using potentially inset path) ---
+                let fill_color = [
+                    circle.color.r as f32,
+                    circle.color.g as f32,
+                    circle.color.b as f32,
+                    circle.color.a as f32,
+                ];
+
+                if let Some(border_width) = circle.border_width {
+                    // Inset the path for fill if there's a border
+                    let half_border_width = border_width / 2.0;
+                    let inner_radius = (circle.radius - half_border_width).max(0.0);
+
+                    // Only build and tessellate if inner radius is positive
+                    if inner_radius > f32::EPSILON {
+                        let mut inner_path_builder = Path::builder();
+                        inner_path_builder.add_circle(circle.center, inner_radius, Winding::Positive);
+                        let fill_path = inner_path_builder.build();
+
+                        fill_tessellator.tessellate_path(
+                            &fill_path,
+                            &FillOptions::default(),
+                            &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
+                                ColoredVertex {
+                                    position: vertex.position().to_array(),
+                                    color: fill_color,
+                                }
+                            }),
+                        ).unwrap();
+                    }
+                    // If inner_radius is zero or less, do nothing for fill
+                } else {
+                    // No border, tessellate the outer path for fill
+                    fill_tessellator.tessellate_path(
+                        &outer_path, // Use outer_path directly
+                        &FillOptions::default(),
+                        &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
+                            ColoredVertex {
+                                position: vertex.position().to_array(),
+                                color: fill_color,
+                            }
+                        }),
+                    ).unwrap();
+                }
+
+
+                // --- Tessellate Border (using outer path) ---
+                if let (Some(border_width), Some(border_color_wgpu)) = (circle.border_width, circle.border_color) {
+                    let border_color = [
+                        border_color_wgpu.r as f32,
+                        border_color_wgpu.g as f32,
+                        border_color_wgpu.b as f32,
+                        border_color_wgpu.a as f32,
+                    ];
+                    let mut stroke_options = StrokeOptions::default();
+                    stroke_options.line_width = border_width;
+                    stroke_options.start_cap = LineCap::Round;
+                    stroke_options.end_cap = LineCap::Round;
+                    stroke_options.line_join = LineJoin::Round;
+
+                    stroke_tessellator.tessellate_path(
+                        &outer_path,
+                        &stroke_options,
+                        &mut BuffersBuilder::new(&mut border_geometry, |vertex: StrokeVertex| {
+                            ColoredVertex {
+                                position: vertex.position().to_array(),
+                                color: border_color,
+                            }
+                        }),
+                    ).unwrap();
+                }
+            }
+            Object2d::Text(_) => {
+                // Text is handled separately before this loop
             }
         }
     }

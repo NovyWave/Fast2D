@@ -49,6 +49,13 @@ fn root() -> impl Element {
                     .rounded_corners(40, 10, 40, 10)
                     .inner_border(5, 255, 255, 255, 1.0) // Renamed method back
                     .into(),
+                // Add the Circle after the text
+                fast2d::Circle::new()
+                    .center(70, 60) // Position overlapping the text
+                    .radius(40)
+                    .color(0, 0, 0, 0.0) // Transparent fill
+                    .inner_border(3, 255, 105, 180, 1.0) // Pink border (HotPink)
+                    .into(),
             ])
         }))
 }
