@@ -1,96 +1,101 @@
 use fast2d::zoon::*;
-
-// @TODO remove this together with the same code in the `lib.rs` file
-// const CANVAS_WIDTH: u32 = 350; // Removed fixed width
-// const CANVAS_HEIGHT: u32 = 350; // Removed fixed height
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub fn main() {
     start_app("app", root);
 }
 
-fn root() -> impl Element {
-    let mut canvas_wrapper_a = fast2d::CanvasWrapper::new();
-    canvas_wrapper_a.update_objects(|objects| {
-        objects.push(
-            fast2d::Text::new()
-                .text("Hello, world!")
-                .font_size(30)
-                .line_height(42)
-                .color(255, 255, 255, 1.0)
-                .family("FiraCode")
-                .bounds(0, 0, 600, 160)
-                .into(),
-        );
-        objects.push(
-            fast2d::Rectangle::new()
-                .position(100, 100)
-                .size(100, 50)
-                .color(0, 255, 0, 1.0)
-                .rounded_corners(10, 5, 20, 25)
-                .into(),
-        );
-        // Add a triangle wave line
-        objects.push(
-            fast2d::Line::new()
-                .points(&[
-                    20.0, 250.0,  // Start
-                    70.0, 200.0,  // Peak 1
-                    120.0, 250.0, // Trough 1
-                    170.0, 200.0, // Peak 2
-                    220.0, 250.0, // Trough 2
-                    270.0, 200.0, // Peak 3
-                    320.0, 250.0, // End
-                ])
-                .color(255, 255, 0, 1.0) // Yellow
-                .width(4.0) // Use width() instead of thickness()
-                .into(),
-        );
-    });
-    let canvas_wrapper_a = Mutable::new(canvas_wrapper_a);
-    
-    let mut canvas_wrapper_b = fast2d::CanvasWrapper::new();
-    canvas_wrapper_b.update_objects(|objects| {
-        objects.push(
-            fast2d::Text::new()
-                .text("Hello from Fast2D!")
-                .font_size(20)
-                .line_height(20)
-                .color(0, 0, 255, 1.0)
-                .family("FiraCode")
-                .position(20, 50)
-                .bounds(0, 0, 600, 160)
-                .into(),
-        );
-        objects.push(
-            fast2d::Rectangle::new()
-                .position(100, 200) // Adjusted Y position for visibility if needed
-                .size(150, 100)
-                .color(255, 0, 0, 1.0)
-                .rounded_corners(40, 10, 40, 10)
-                .inner_border(5, 255, 255, 255, 1.0) // Renamed method back
-                .into(),
-        );
-        // Add the Circle after the text
-        objects.push(
-            fast2d::Circle::new()
-                .center(70, 60) // Position overlapping the text
-                .radius(40)
-                .color(0, 0, 0, 0.0) // Transparent fill
-                .inner_border(3, 255, 105, 180, 1.0) // Pink border (HotPink)
-                .into(),
-        );
-    });
-    let canvas_wrapper_b = Mutable::new(canvas_wrapper_b);
+fn canvas_wrappers() -> [fast2d::CanvasWrapper; 2] { 
+    [
+        {
+            let mut canvas_wrapper = fast2d::CanvasWrapper::new();
+            canvas_wrapper.update_objects(|objects| {
+                objects.push(
+                    fast2d::Text::new()
+                        .text("Hello, world!")
+                        .font_size(30)
+                        .line_height(42)
+                        .color(255, 255, 255, 1.0)
+                        .family("FiraCode")
+                        .bounds(0, 0, 600, 160)
+                        .into(),
+                );
+                objects.push(
+                    fast2d::Rectangle::new()
+                        .position(100, 100)
+                        .size(100, 50)
+                        .color(0, 255, 0, 1.0)
+                        .rounded_corners(10, 5, 20, 25)
+                        .into(),
+                );
+                // Add a triangle wave line
+                objects.push(
+                    fast2d::Line::new()
+                        .points(&[
+                            20.0, 250.0,  // Start
+                            70.0, 200.0,  // Peak 1
+                            120.0, 250.0, // Trough 1
+                            170.0, 200.0, // Peak 2
+                            220.0, 250.0, // Trough 2
+                            270.0, 200.0, // Peak 3
+                            320.0, 250.0, // End
+                        ])
+                        .color(255, 255, 0, 1.0) // Yellow
+                        .width(4.0) // Use width() instead of thickness()
+                        .into(),
+                );
+            });
+            canvas_wrapper
+        },
+        {    
+            let mut canvas_wrapper = fast2d::CanvasWrapper::new();
+            canvas_wrapper.update_objects(|objects| {
+                objects.push(
+                    fast2d::Text::new()
+                        .text("Hello from Fast2D!")
+                        .font_size(20)
+                        .line_height(20)
+                        .color(0, 0, 255, 1.0)
+                        .family("FiraCode")
+                        .position(20, 50)
+                        .bounds(0, 0, 600, 160)
+                        .into(),
+                );
+                objects.push(
+                    fast2d::Rectangle::new()
+                        .position(100, 200) // Adjusted Y position for visibility if needed
+                        .size(150, 100)
+                        .color(255, 0, 0, 1.0)
+                        .rounded_corners(40, 10, 40, 10)
+                        .inner_border(5, 255, 255, 255, 1.0) // Renamed method back
+                        .into(),
+                );
+                // Add the Circle after the text
+                objects.push(
+                    fast2d::Circle::new()
+                        .center(70, 60) // Position overlapping the text
+                        .radius(40)
+                        .color(0, 0, 0, 0.0) // Transparent fill
+                        .inner_border(3, 255, 105, 180, 1.0) // Pink border (HotPink)
+                        .into(),
+                );
+            });
+            canvas_wrapper
+        }
+    ]
+}
 
+fn root() -> impl Element {
     Column::new()
         .s(Height::fill()) // Ensure column fills height
         .s(Width::fill()) // Ensure column fills width
         .s(Background::new().color(color!("Black")))
-        .item(panel_with_canvas(canvas_wrapper_a))
-        .item(panel_with_canvas(canvas_wrapper_b))
+        .items(canvas_wrappers().map(panel_with_canvas))
 }
 
-fn panel_with_canvas(canvas_wrapper: Mutable<fast2d::CanvasWrapper>) -> impl Element {
+fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
+    let canvas_wrapper = Rc::new(RefCell::new(canvas_wrapper));
     El::new()
         .s(Align::center())
         .s(Clip::both())
@@ -99,7 +104,7 @@ fn panel_with_canvas(canvas_wrapper: Mutable<fast2d::CanvasWrapper>) -> impl Ele
         .s(Width::fill().max(700)) // Example max width
         .s(Height::fill().max(350)) // Example max height
         .on_viewport_size_change(clone!((canvas_wrapper) move |width, height| {
-            canvas_wrapper.lock_mut().resized(width, height);
+            canvas_wrapper.borrow_mut().resized(width, height);
         }))
         .child(
             Canvas::new()
@@ -110,7 +115,7 @@ fn panel_with_canvas(canvas_wrapper: Mutable<fast2d::CanvasWrapper>) -> impl Ele
                 .after_insert(move |canvas| {
                     // Spawn the async function as a task
                     Task::start(async move {
-                        canvas_wrapper.lock_mut().set_canvas(canvas).await;
+                        canvas_wrapper.borrow_mut().set_canvas(canvas).await;
                     });
                 })
         )
