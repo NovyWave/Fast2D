@@ -2,7 +2,6 @@ pub use zoon;
 
 use zoon::wasm_bindgen::throw_str;
 use zoon::web_sys::HtmlCanvasElement;
-use zoon::Task;
 use zoon::UnwrapThrowExt;
 
 use std::sync::Arc;
@@ -76,15 +75,15 @@ impl CanvasWrapper {
     pub async fn set_canvas(&mut self, canvas: HtmlCanvasElement) {
         self.canvas = Some(canvas.clone());
         self.graphics = Some(create_graphics(canvas).await);
-        self.draw();
+        self.draw().await;
     }
 
-    pub fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) {
+    pub async fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) {
         updater(&mut self.objects);
-        self.draw();
+        self.draw().await;
     }
 
-    pub fn resized(&mut self, width: u32, height: u32) {
+    pub async fn resized(&mut self, width: u32, height: u32) {
         if let Some(graphics) = &mut self.graphics {
             // Ensure width and height are not zero, which can cause issues
             let new_width = width.max(1);
@@ -126,22 +125,14 @@ impl CanvasWrapper {
             graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
         }
-        self.draw();
+        self.draw().await;
     }
 
-    fn draw(&mut self) {
+    async fn draw(&mut self) {
         if let Some(graphics) = &mut self.graphics {
             draw(graphics, &self.objects);
         }
     }
-}
-
-
-pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {
-    Task::start(async move {
-        let mut graphics = create_graphics(canvas).await;
-        draw(&mut graphics, &objects)
-    });
 }
 
 // Define vertex structure for rectangles (matches shader) - Renamed
