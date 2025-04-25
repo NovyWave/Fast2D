@@ -1,83 +1,158 @@
 use fast2d::zoon::*;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::f32::consts::PI; // Import PI for sine wave
 
 pub fn main() {
     start_app("app", root);
 }
 
-fn canvas_wrappers() -> [fast2d::CanvasWrapper; 2] { 
+fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
     [
-        {
+        { // Canvas 0: Simple Rectangle
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
             canvas_wrapper.update_objects(|objects| {
                 objects.push(
-                    fast2d::Text::new()
-                        .text("Hello, world!")
-                        .font_size(30)
-                        .line_height(42)
-                        .color(255, 255, 255, 1.0)
-                        .family("FiraCode")
-                        .bounds(0, 0, 600, 160)
-                        .into(),
-                );
-                objects.push(
                     fast2d::Rectangle::new()
-                        .position(100, 100)
-                        .size(100, 50)
-                        .color(0, 255, 0, 1.0)
-                        .rounded_corners(10, 5, 20, 25)
+                        .position(50, 50)
+                        .size(200, 150) // Increased size to overlap text
+                        .color(255, 0, 0, 1.0) // Red
                         .into(),
                 );
-                // Add a triangle wave line
                 objects.push(
-                    fast2d::Line::new()
-                        .points(&[
-                            20.0, 250.0,  // Start
-                            70.0, 200.0,  // Peak 1
-                            120.0, 250.0, // Trough 1
-                            170.0, 200.0, // Peak 2
-                            220.0, 250.0, // Trough 2
-                            270.0, 200.0, // Peak 3
-                            320.0, 250.0, // End
-                        ])
-                        .color(255, 255, 0, 1.0) // Yellow
-                        .width(4.0) // Use width() instead of thickness()
+                    fast2d::Text::new()
+                        .text("Simple Rectangle")
+                        .font_size(60) // Made font size much larger
+                        .color(200, 200, 200, 1.0)
+                        .position(10, 10)
+                        .bounds(0, 0, 300, 100) // Increased bounds for larger text
                         .into(),
                 );
             });
             canvas_wrapper
         },
-        {    
+        { // Canvas 1: Sine Wave
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
             canvas_wrapper.update_objects(|objects| {
+                // Generate points for a sine wave
+                let mut sine_points = Vec::new();
+                let amplitude = 50.0;
+                let frequency = 0.02;
+                let y_offset = 150.0;
+                let steps = 100; // Keep as integer for loop
+                for i in 0..=steps {
+                    let x = (i as f32 / steps as f32) * 350.0; // Map i to x-coordinate (0-350)
+                    let y = y_offset + amplitude * (x * frequency * 2.0 * PI).sin();
+                    sine_points.push(x);
+                    sine_points.push(y);
+                }
+
+                objects.push(
+                    fast2d::Line::new()
+                        .points(&sine_points)
+                        .color(0, 255, 255, 1.0) // Cyan color
+                        .width(3.0)
+                        .into(),
+                );
                 objects.push(
                     fast2d::Text::new()
-                        .text("Hello from Fast2D!")
-                        .font_size(20)
-                        .line_height(20)
-                        .color(0, 0, 255, 1.0)
-                        .family("FiraCode")
-                        .position(20, 50)
-                        .bounds(0, 0, 600, 160)
+                        .text("Sine Wave Example")
+                        .font_size(20) // Integer
+                        .color(255, 255, 255, 0.8)
+                        .position(10, 10) // Integer
+                        .bounds(0, 0, 300, 50) // Integer
                         .into(),
                 );
-                objects.push(
-                    fast2d::Rectangle::new()
-                        .position(100, 200) // Adjusted Y position for visibility if needed
-                        .size(150, 100)
-                        .color(255, 0, 0, 1.0)
-                        .rounded_corners(40, 10, 40, 10)
-                        .inner_border(5, 255, 255, 255, 1.0) // Renamed method back
-                        .into(),
-                );
-                // Add the Circle after the text
+            });
+            canvas_wrapper
+        },
+        { // Canvas 2: Simple Face
+            let mut canvas_wrapper = fast2d::CanvasWrapper::new();
+            canvas_wrapper.update_objects(|objects| {
+                // Removed y_offset variable
+
+                // Head
                 objects.push(
                     fast2d::Circle::new()
-                        .center(70, 60) // Position overlapping the text
-                        .radius(40)
+                        .center(175, 205) // 175 + 30
+                        .radius(100)
+                        .color(0, 128, 0, 1.0) // Green color
+                        .into(),
+                );
+                // Left Eye
+                objects.push(
+                    fast2d::Circle::new()
+                        .center(135, 175) // 145 + 30
+                        .radius(15)
+                        .color(255, 255, 255, 1.0) // White
+                        .inner_border(2, 0, 0, 0, 1.0) // Increased border width to 2
+                        .into(),
+                );
+                objects.push( // Pupil
+                    fast2d::Circle::new()
+                        .center(135, 175) // 145 + 30
+                        .radius(7)
+                        .color(0, 0, 0, 1.0) // Black
+                        .into(),
+                );
+                 // Right Eye
+                 objects.push(
+                    fast2d::Circle::new()
+                        .center(215, 175) // 145 + 30
+                        .radius(15)
+                        .color(255, 255, 255, 1.0) // White
+                        .inner_border(2, 0, 0, 0, 1.0) // Increased border width to 2
+                        .into(),
+                );
+                objects.push( // Pupil
+                    fast2d::Circle::new()
+                        .center(215, 175) // 145 + 30
+                        .radius(7)
+                        .color(0, 0, 0, 1.0) // Black
+                        .into(),
+                );
+
+                // Hat
+                objects.push( // Brim
+                    fast2d::Rectangle::new()
+                        .position(115, 100) // 70 + 30
+                        .size(120, 20)
+                        .color(0, 0, 0, 0.0) // Transparent fill (Reverted)
+                        .rounded_corners(3, 3, 3, 3)
+                        .inner_border(3, 139, 0, 0, 1.0) // Thick dark red border
+                        .into(),
+                );
+                objects.push( // Top part
+                    fast2d::Rectangle::new()
+                        .position(135, 60) // 30 + 30
+                        .size(80, 45)
                         .color(0, 0, 0, 0.0) // Transparent fill
-                        .inner_border(3, 255, 105, 180, 1.0) // Pink border (HotPink)
+                        .rounded_corners(5, 5, 0, 0)
+                        .inner_border(3, 255, 165, 0, 1.0) // Thick orange border
+                        .into(),
+                );
+
+                // Mouth (Smile) - Replace Rectangle with Line
+                objects.push(
+                    fast2d::Line::new()
+                        .points(&[
+                            140.0, 245.0, // 215.0 + 30.0
+                            155.0, 260.0, // 230.0 + 30.0
+                            175.0, 265.0, // 235.0 + 30.0
+                            195.0, 260.0, // 230.0 + 30.0
+                            210.0, 245.0, // 215.0 + 30.0
+                        ])
+                        .color(0, 0, 0, 1.0) // Black smile line
+                        .width(5.0)
+                        .into(),
+                );
+                 objects.push(
+                    fast2d::Text::new()
+                        .text("Face Example")
+                        .font_size(20)
+                        .color(255, 255, 255, 0.8)
+                        .position(10, 10) // Keep text at top left
+                        .bounds(0, 0, 300, 50)
                         .into(),
                 );
             });
@@ -108,8 +183,8 @@ fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
         }))
         .child(
             Canvas::new()
-                .width(0) // Add initial width to satisfy type system
-                .height(0) // Add initial height to satisfy type system
+                .width(0) // Integer
+                .height(0) // Integer
                 .s(Width::fill()) // Style will override layout width
                 .s(Height::fill()) // Added fill height style
                 .after_insert(move |canvas| {
