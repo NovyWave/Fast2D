@@ -29,6 +29,22 @@ fn root() -> impl Element {
                 .rounded_corners(10, 5, 20, 25)
                 .into(),
         );
+        // Add a triangle wave line
+        objects.push(
+            fast2d::Line::new()
+                .points(&[
+                    20.0, 250.0,  // Start
+                    70.0, 200.0,  // Peak 1
+                    120.0, 250.0, // Trough 1
+                    170.0, 200.0, // Peak 2
+                    220.0, 250.0, // Trough 2
+                    270.0, 200.0, // Peak 3
+                    320.0, 250.0, // End
+                ])
+                .color(255, 255, 0, 1.0) // Yellow
+                .width(4.0) // Use width() instead of thickness()
+                .into(),
+        );
     });
     let canvas_wrapper_a = Mutable::new(canvas_wrapper_a);
     

@@ -30,6 +30,7 @@ mod object_2d;
 pub use object_2d::text::Text;
 pub use object_2d::rectangle::Rectangle; // Add this line
 pub use object_2d::circle::Circle; // Added
+pub use object_2d::line::Line; // Add this line
 
 const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
@@ -52,6 +53,7 @@ pub enum Object2d {
     Text(Text),
     Rectangle(Rectangle), // Uses the imported Rectangle
     Circle(Circle), // Added
+    Line(Line), // Added Line variant
 }
 
 pub struct CanvasWrapper {
@@ -410,18 +412,17 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
         )
         .unwrap();
 
-    // --- Rectangle Preparation ---
-    // Fill Geometry
-    let mut fill_tessellator = FillTessellator::new();
-    let mut fill_geometry: VertexBuffers<ColoredVertex, u16> = VertexBuffers::new(); // Use renamed struct
 
-    // Border Geometry
+    // --- Shape Tessellation ---
+    // Combine all shape geometry into a single buffer
+    let mut fill_tessellator = FillTessellator::new();
     let mut stroke_tessellator = StrokeTessellator::new();
-    let mut border_geometry: VertexBuffers<ColoredVertex, u16> = VertexBuffers::new(); // Use renamed struct
+    let mut geometry: VertexBuffers<ColoredVertex, u16> = VertexBuffers::new();
 
     for obj in objects {
         match obj {
             Object2d::Rectangle(rect) => {
+                // ... (Rectangle tessellation logic - add to `geometry`) ...
                 let mut outer_path_builder = Path::builder();
                 outer_path_builder.add_rounded_rectangle(
                     &Box2D::new(rect.position, rect.position + rect.size.to_vector()),
@@ -464,10 +465,11 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                     outer_path.clone()
                 };
 
+                // Add fill geometry
                 fill_tessellator.tessellate_path(
                     &fill_path,
                     &FillOptions::default(),
-                    &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
+                    &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| { // Add to geometry
                         ColoredVertex {
                             position: vertex.position().to_array(),
                             color: fill_color,
@@ -489,10 +491,11 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                     stroke_options.end_cap = LineCap::Round;
                     stroke_options.line_join = LineJoin::Round;
 
+                    // Add border geometry
                     stroke_tessellator.tessellate_path(
                         &outer_path,
                         &stroke_options,
-                        &mut BuffersBuilder::new(&mut border_geometry, |vertex: StrokeVertex| {
+                        &mut BuffersBuilder::new(&mut geometry, |vertex: StrokeVertex| { // Add to geometry
                             ColoredVertex {
                                 position: vertex.position().to_array(),
                                 color: border_color,
@@ -502,6 +505,7 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                 }
             }
             Object2d::Circle(circle) => {
+                // ... (Circle tessellation logic - add to `geometry`) ...
                 let mut outer_path_builder = Path::builder();
                 outer_path_builder.add_circle(circle.center, circle.radius, Winding::Positive);
                 let outer_path = outer_path_builder.build(); // Path for the stroke
@@ -525,10 +529,11 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                         inner_path_builder.add_circle(circle.center, inner_radius, Winding::Positive);
                         let fill_path = inner_path_builder.build();
 
+                        // Add fill geometry
                         fill_tessellator.tessellate_path(
                             &fill_path,
                             &FillOptions::default(),
-                            &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
+                            &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| { // Add to geometry
                                 ColoredVertex {
                                     position: vertex.position().to_array(),
                                     color: fill_color,
@@ -539,15 +544,16 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                     // If inner_radius is zero or less, do nothing for fill
                 } else {
                     // No border, tessellate the outer path for fill
+                    // Add fill geometry
                     fill_tessellator.tessellate_path(
                         &outer_path, // Use outer_path directly
                         &FillOptions::default(),
-                        &mut BuffersBuilder::new(&mut fill_geometry, |vertex: FillVertex| {
-                            ColoredVertex {
-                                position: vertex.position().to_array(),
-                                color: fill_color,
-                            }
-                        }),
+                        &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| { // Add to geometry
+                                ColoredVertex {
+                                    position: vertex.position().to_array(),
+                                    color: fill_color,
+                                }
+                            }),
                     ).unwrap();
                 }
 
@@ -566,10 +572,11 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                     stroke_options.end_cap = LineCap::Round;
                     stroke_options.line_join = LineJoin::Round;
 
+                    // Add border geometry
                     stroke_tessellator.tessellate_path(
                         &outer_path,
                         &stroke_options,
-                        &mut BuffersBuilder::new(&mut border_geometry, |vertex: StrokeVertex| {
+                        &mut BuffersBuilder::new(&mut geometry, |vertex: StrokeVertex| { // Add to geometry
                             ColoredVertex {
                                 position: vertex.position().to_array(),
                                 color: border_color,
@@ -578,40 +585,62 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                     ).unwrap();
                 }
             }
+            Object2d::Line(line) => {
+                if line.points.len() < 2 { continue; } // Need at least two points for a line
+
+                let line_color = [
+                    line.color.r as f32,
+                    line.color.g as f32,
+                    line.color.b as f32,
+                    line.color.a as f32,
+                ];
+
+                let mut path_builder = Path::builder();
+                path_builder.begin(line.points[0]);
+                for point in line.points.iter().skip(1) {
+                    path_builder.line_to(*point);
+                }
+                path_builder.end(false); // Uncomment this line to properly finish the path segment
+                let path = path_builder.build();
+
+                let mut stroke_options = StrokeOptions::default();
+                stroke_options.line_width = line.width; // Use line.width
+                stroke_options.start_cap = LineCap::Round; // Or Butt, Square
+                stroke_options.end_cap = LineCap::Round;   // Or Butt, Square
+                stroke_options.line_join = LineJoin::Round; // Or Miter, Bevel
+
+                // Add line geometry
+                stroke_tessellator.tessellate_path(
+                    &path,
+                    &stroke_options,
+                    &mut BuffersBuilder::new(&mut geometry, |vertex: StrokeVertex| { // Add to geometry
+                        ColoredVertex {
+                            position: vertex.position().to_array(),
+                            color: line_color,
+                        }
+                    }),
+                ).unwrap();
+            }
             Object2d::Text(_) => {
-                // Text is handled separately before this loop
+                // Text is handled separately
             }
         }
     }
 
-    // --- Create Fill Buffers ---
-    let fill_vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Rectangle Fill Vertex Buffer"), // Renamed label
-        contents: bytemuck::cast_slice(&fill_geometry.vertices),
+    // --- Create Combined Shape Buffers ---
+    let vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Shape Vertex Buffer"), // Combined buffer
+        contents: bytemuck::cast_slice(&geometry.vertices),
         usage: wgpu::BufferUsages::VERTEX,
     });
-    let fill_index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Rectangle Fill Index Buffer"), // Renamed label
-        contents: bytemuck::cast_slice(&fill_geometry.indices),
+    let index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("Shape Index Buffer"), // Combined buffer
+        contents: bytemuck::cast_slice(&geometry.indices),
         usage: wgpu::BufferUsages::INDEX,
     });
-    let fill_index_count = fill_geometry.indices.len() as u32;
+    let index_count = geometry.indices.len() as u32;
 
-    // --- Create Border Buffers ---
-    let border_vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Rectangle Border Vertex Buffer"),
-        contents: bytemuck::cast_slice(&border_geometry.vertices),
-        usage: wgpu::BufferUsages::VERTEX,
-    });
-    let border_index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Rectangle Border Index Buffer"),
-        contents: bytemuck::cast_slice(&border_geometry.indices),
-        usage: wgpu::BufferUsages::INDEX,
-    });
-    let border_index_count = border_geometry.indices.len() as u32;
-
-
-    // ... get frame, views, encoder ...
+    // --- Render Pass ---
     let frame = gfx.surface.get_current_texture().unwrap_throw();
     let swap_chain_view = frame.texture.create_view(&Default::default());
     let msaa_texture_view = gfx.msaa_texture.create_view(&Default::default());
@@ -633,21 +662,13 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
             occlusion_query_set: None,
         });
 
-        rpass.set_pipeline(&gfx.rect_pipeline); // Use the same pipeline for both
-        rpass.set_bind_group(0, &gfx.bind_group, &[]); // Set the canvas uniform bind group
-
-        // Draw Fill
-        if fill_index_count > 0 {
-            rpass.set_vertex_buffer(0, fill_vertex_buffer.slice(..));
-            rpass.set_index_buffer(fill_index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-            rpass.draw_indexed(0..fill_index_count, 0, 0..1);
-        }
-
-        // Draw Border (if it exists)
-        if border_index_count > 0 {
-            rpass.set_vertex_buffer(0, border_vertex_buffer.slice(..)); // Set border buffer
-            rpass.set_index_buffer(border_index_buffer.slice(..), wgpu::IndexFormat::Uint16); // Set border buffer
-            rpass.draw_indexed(0..border_index_count, 0, 0..1); // Draw border
+        // Draw Shapes (Rectangles, Circles, Lines)
+        if index_count > 0 {
+            rpass.set_pipeline(&gfx.rect_pipeline);
+            rpass.set_bind_group(0, &gfx.bind_group, &[]); // Set uniforms
+            rpass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            rpass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            rpass.draw_indexed(0..index_count, 0, 0..1);
         }
 
         // Render text on top
@@ -681,7 +702,7 @@ struct Graphics {
     bind_group_layout: BindGroupLayout,
     bind_group: BindGroup,
 
-    // Only store the pipeline for rectangles
+    // Only store the pipeline for rectangles/shapes
     rect_pipeline: wgpu::RenderPipeline,
 }
 
