@@ -82,9 +82,9 @@ fn panel_with_canvas(canvas_wrapper: Mutable<fast2d::CanvasWrapper>) -> impl Ele
         // Give the panel a size constraint (e.g., fill available space up to a max)
         .s(Width::fill().max(700)) // Example max width
         .s(Height::fill().max(350)) // Example max height
-        .on_viewport_size_change(|width, height| {
+        .on_viewport_size_change(clone!((canvas_wrapper) move |width, height| {
             canvas_wrapper.lock_mut().resized(width, height);
-        })
+        }))
         .child(
             Canvas::new()
                 .width(0) // Add initial width to satisfy type system
@@ -92,7 +92,10 @@ fn panel_with_canvas(canvas_wrapper: Mutable<fast2d::CanvasWrapper>) -> impl Ele
                 .s(Width::fill()) // Style will override layout width
                 .s(Height::fill()) // Added fill height style
                 .after_insert(move |canvas| {
-                    canvas_wrapper.lock_mut().set_canvas(canvas);
+                    // Spawn the async function as a task
+                    Task::start(async move {
+                        canvas_wrapper.lock_mut().set_canvas(canvas).await;
+                    });
                 })
         )
 }

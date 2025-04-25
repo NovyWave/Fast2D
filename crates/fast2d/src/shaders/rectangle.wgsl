@@ -1,40 +1,48 @@
 // Vertex shader
 
+// Uniforms structure matching the Rust struct (with padding)
+struct CanvasUniforms {
+    width: f32,
+    height: f32,
+    // Add padding to meet 16-byte alignment requirement
+    _padding1: f32,
+    _padding2: f32,
+};
+
+// Bind group 0, binding 0 for the uniforms
+@group(0) @binding(0)
+var<uniform> canvas: CanvasUniforms;
+
+// Input vertex structure matching Rust's ColoredVertex
 struct VertexInput {
     @location(0) position: vec2<f32>,
     @location(1) color: vec4<f32>,
 };
 
+// Output structure to pass data to the fragment shader
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
     @location(0) color: vec4<f32>,
 };
 
-// Define canvas size constants (replace with uniforms later if needed)
-const CANVAS_WIDTH: f32 = 350.0;
-const CANVAS_HEIGHT: f32 = 350.0;
-
 @vertex
 fn vs_main(
-    input: VertexInput, // Use VertexInput again
+    model: VertexInput,
 ) -> VertexOutput {
     var out: VertexOutput;
-
-    // Normalize pixel coordinates (0..width, 0..height) to clip space (-1..1, 1..-1)
-    // Note: Y is flipped because clip space Y goes up, while pixel space Y often goes down.
-    let normalized_pos = vec2<f32>(
-        (input.position.x / CANVAS_WIDTH) * 2.0 - 1.0,
-        (1.0 - (input.position.y / CANVAS_HEIGHT)) * 2.0 - 1.0 // Flip Y
-    );
-
-    out.clip_position = vec4<f32>(normalized_pos, 0.0, 1.0);
-    out.color = input.color; // Pass color through
+    // Transform pixel coordinates to Normalized Device Coordinates (NDC)
+    // NDC X: (pixel_x / width) * 2.0 - 1.0
+    // NDC Y: (pixel_y / height) * -2.0 + 1.0  (Invert Y)
+    let ndc_x = (model.position.x / canvas.width) * 2.0 - 1.0;
+    let ndc_y = (model.position.y / canvas.height) * -2.0 + 1.0; // Invert Y axis
+    out.clip_position = vec4<f32>(ndc_x, ndc_y, 0.0, 1.0);
+    out.color = model.color;
     return out;
 }
 
 // Fragment shader
 
 @fragment
-fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
-    return input.color; // Return the interpolated vertex color
+fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
+    return in.color;
 }

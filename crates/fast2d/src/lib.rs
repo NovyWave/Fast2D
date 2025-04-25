@@ -22,7 +22,7 @@ use lyon::path::builder::BorderRadii; // Added BorderRadii back
 use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder, StrokeTessellator, StrokeOptions, StrokeVertex, LineCap, LineJoin}; // Added stroke types
 
 // Import wgpu types
-use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, Color as WgpuColor};
+use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, Color as WgpuColor, BindGroupLayout, BindGroup, Buffer as WgpuBuffer}; // Added BindGroupLayout, BindGroup, WgpuBuffer
 use wgpu::util::DeviceExt;
 
 // Declare the object_2d module and re-export structs
@@ -35,7 +35,16 @@ const CANVAS_WIDTH: u32 = 350;
 const CANVAS_HEIGHT: u32 = 350;
 const MSAA_SAMPLE_COUNT: u32 = 4; // Multisampling for anti-aliasing
 
-// Rectangle struct definition is removed from here
+// Define the uniform structure (must match WGSL and be 16-byte aligned)
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct CanvasUniforms {
+    width: f32,
+    height: f32,
+    // Add padding to meet 16-byte alignment requirement
+    _padding1: f32,
+    _padding2: f32,
+}
 
 // Enum definition remains here
 #[derive(Debug, Clone)]
@@ -44,6 +53,79 @@ pub enum Object2d {
     Rectangle(Rectangle), // Uses the imported Rectangle
     Circle(Circle), // Added
 }
+
+pub struct CanvasWrapper {
+    objects: Vec<Object2d>,
+    canvas: Option<HtmlCanvasElement>,
+    graphics: Option<Graphics>,
+}
+
+impl CanvasWrapper {
+    pub fn new() -> Self {
+        Self {
+            objects: Vec::new(),
+            canvas: None,
+            graphics: None,
+        }
+    }
+
+    pub async fn set_canvas(&mut self, canvas: HtmlCanvasElement) {
+        self.canvas = Some(canvas.clone());
+        self.graphics = Some(create_graphics(canvas).await);
+        self.draw();
+    }
+
+    pub fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) {
+        updater(&mut self.objects);
+        self.draw();
+    }
+
+    pub fn resized(&mut self, width: u32, height: u32) {
+        if let Some(graphics) = &mut self.graphics {
+            // Ensure width and height are not zero, which can cause issues
+            let new_width = width.max(1);
+            let new_height = height.max(1);
+
+            graphics.surface_config.width = new_width;
+            graphics.surface_config.height = new_height;
+            graphics.surface.configure(&graphics.device, &graphics.surface_config);
+
+            // Recreate the MSAA texture with the new size
+            graphics.msaa_texture = graphics.device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("MSAA Texture"),
+                size: wgpu::Extent3d {
+                    width: new_width,
+                    height: new_height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: MSAA_SAMPLE_COUNT,
+                dimension: wgpu::TextureDimension::D2,
+                format: graphics.surface_config.format, // Use the current surface format
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[],
+            });
+
+            // Update the uniform buffer
+            let uniforms = CanvasUniforms {
+                width: new_width as f32,
+                height: new_height as f32,
+                _padding1: 0.0, // Initialize padding
+                _padding2: 0.0, // Initialize padding
+            };
+            graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
+        }
+        self.draw();
+    }
+
+    fn draw(&mut self) {
+        if let Some(graphics) = &mut self.graphics {
+            draw(graphics, &self.objects);
+        }
+    }
+}
+
 
 pub fn run(canvas: HtmlCanvasElement, objects: Vec<Object2d>) {
     Task::start(async move {
@@ -128,6 +210,43 @@ fn create_graphics(
         let swapchain_capabilities = surface.get_capabilities(&adapter);
         let swapchain_format = swapchain_capabilities.formats[0];
 
+        // --- Uniform Buffer Setup ---
+        let uniforms = CanvasUniforms {
+            width: surface_config.width as f32,
+            height: surface_config.height as f32,
+            _padding1: 0.0, // Initialize padding
+            _padding2: 0.0, // Initialize padding
+        };
+        let uniform_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Canvas Uniform Buffer"),
+            contents: bytemuck::cast_slice(&[uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST, // Add COPY_DST
+        });
+
+        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("Canvas Bind Group Layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX, // Visible only to vertex shader
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Canvas Bind Group"),
+            layout: &bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+
+
         // Create multisample texture
         let msaa_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("MSAA Texture"),
@@ -173,7 +292,7 @@ fn create_graphics(
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("Rectangle Pipeline Layout"),
-            bind_group_layouts: &[], // Add bind group layouts if using uniforms/textures
+            bind_group_layouts: &[&bind_group_layout], // Use the created bind group layout
             push_constant_ranges: &[],
         });
 
@@ -228,10 +347,10 @@ fn create_graphics(
             atlas,
             text_renderer,
 
-            // Remove old buffer fields
-            // vertex_buffer,
-            // index_buffer,
-            // index_count,
+            uniform_buffer, // Add uniform buffer
+            bind_group_layout, // Add bind group layout
+            bind_group, // Add bind group
+
             rect_pipeline, // Keep the pipeline
         }
     }
@@ -515,6 +634,7 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
         });
 
         rpass.set_pipeline(&gfx.rect_pipeline); // Use the same pipeline for both
+        rpass.set_bind_group(0, &gfx.bind_group, &[]); // Set the canvas uniform bind group
 
         // Draw Fill
         if fill_index_count > 0 {
@@ -555,6 +675,11 @@ struct Graphics {
     viewport: glyphon::Viewport,
     atlas: glyphon::TextAtlas,
     text_renderer: glyphon::TextRenderer,
+
+    // Uniforms for canvas size
+    uniform_buffer: WgpuBuffer,
+    bind_group_layout: BindGroupLayout,
+    bind_group: BindGroup,
 
     // Only store the pipeline for rectangles
     rect_pipeline: wgpu::RenderPipeline,
