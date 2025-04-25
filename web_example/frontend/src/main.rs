@@ -16,16 +16,17 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                     fast2d::Rectangle::new()
                         .position(50, 50)
                         .size(200, 150) // Increased size to overlap text
-                        .color(255, 0, 0, 1.0) // Red
+                        .color(50, 0, 100, 1.0) // Blue
                         .into(),
                 );
                 objects.push(
                     fast2d::Text::new()
                         .text("Simple Rectangle")
                         .font_size(60) // Made font size much larger
-                        .color(200, 200, 200, 1.0)
-                        .position(10, 10)
-                        .bounds(0, 0, 300, 100) // Increased bounds for larger text
+                        .line_height(60) // Adjusted line height
+                        .color(255, 255, 255, 0.2)
+                        .position(10, 50) // Use new position
+                        .size(350, 120) // Use new size instead of bounds
                         .into(),
                 );
             });
@@ -59,8 +60,8 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                         .text("Sine Wave Example")
                         .font_size(20) // Integer
                         .color(255, 255, 255, 0.8)
-                        .position(10, 10) // Integer
-                        .bounds(0, 0, 300, 50) // Integer
+                        .position(10, 10) // Use new position
+                        .size(300, 50) // Use new size instead of bounds
                         .into(),
                 );
             });
@@ -151,8 +152,8 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                         .text("Face Example")
                         .font_size(20)
                         .color(255, 255, 255, 0.8)
-                        .position(10, 10) // Keep text at top left
-                        .bounds(0, 0, 300, 50)
+                        .position(10, 10) // Use new position
+                        .size(300, 50) // Use new size instead of bounds
                         .into(),
                 );
             });
@@ -162,11 +163,17 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
 }
 
 fn root() -> impl Element {
-    Column::new()
+    El::new()
         .s(Height::fill()) // Ensure column fills height
-        .s(Width::fill()) // Ensure column fills width
-        .s(Background::new().color(color!("Black")))
-        .items(canvas_wrappers().map(panel_with_canvas))
+        .s(Width::fill())
+        .s(Scrollbars::both())
+        .child(
+            Column::new()
+                .s(Background::new().color(color!("Black")))
+                .s(Gap::both(10)) // Add gap between panels
+                .s(Scrollbars::both())
+                .items(canvas_wrappers().map(panel_with_canvas))
+        )
 }
 
 fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
@@ -176,8 +183,8 @@ fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
         .s(Clip::both())
         .s(Borders::all(Border::new().color(color!("Gray"))))
         // Give the panel a size constraint (e.g., fill available space up to a max)
-        .s(Width::fill().max(700)) // Example max width
-        .s(Height::fill().max(350)) // Example max height
+        .s(Width::fill().max(650)) // Example max width
+        .s(Height::exact(350)) // Example max height
         .on_viewport_size_change(clone!((canvas_wrapper) move |width, height| {
             canvas_wrapper.borrow_mut().resized(width, height);
         }))
