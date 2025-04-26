@@ -42,14 +42,17 @@ fn vs_main(
 
 // Fragment shader
 
-// --- sRGB conversion function (will be injected by Rust if needed) ---
-// fn linear_to_srgb(linear: vec3<f32>) -> vec3<f32> { ... }
+// sRGB conversion function (always used)
+fn linear_to_srgb(linear: vec3<f32>) -> vec3<f32> {
+    let cutoff = linear < vec3<f32>(0.0031308);
+    let higher = 1.055 * pow(linear, vec3<f32>(1.0 / 2.4)) - 0.055;
+    let lower = linear * 12.92;
+    return select(higher, lower, cutoff);
+}
 
 @fragment
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
-    // Input color 'in.color' is linear.
-    // If the surface format is sRGB, WGPU handles conversion.
-    // If not, Rust injects linear_to_srgb and modifies the return below.
-    // The base shader just returns linear color.
-    return in.color;
+    let linear_color = in.color;
+    // Always apply manual sRGB conversion
+    return vec4<f32>(linear_to_srgb(linear_color.rgb), linear_color.a);
 }

@@ -24,7 +24,6 @@ use web_sys::{CanvasRenderingContext2d, wasm_bindgen::JsCast}; // Add JsCast her
 
 #[cfg(not(feature = "canvas"))]
 use {
-    std::borrow::Cow,
     // Use shared Point type instead of lyon::math::point directly in tessellation if possible,
     // or convert within draw_wgpu. For now, keep lyon imports needed for tessellation.
     lyon::math::point, // Keep for tessellation for now
@@ -458,30 +457,19 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
 
     let surface_caps = surface.get_capabilities(&adapter);
     
-    // Prefer sRGB formats for consistent color handling
-    let preferred_formats = [
-        wgpu::TextureFormat::Bgra8UnormSrgb,
-        wgpu::TextureFormat::Rgba8UnormSrgb,
+    // Force linear (non-sRGB) format for the surface
+    let preferred_linear_formats = [
+        wgpu::TextureFormat::Rgba8Unorm,
+        wgpu::TextureFormat::Bgra8Unorm,
     ];
-    
-    // First try to find a preferred sRGB format that's supported
-    let surface_format = preferred_formats.iter()
+    let surface_format = preferred_linear_formats.iter()
         .copied()
         .find(|format| surface_caps.formats.contains(format))
-        .unwrap_or_else(|| {
-            // If none of our preferred formats are available,
-            // fall back to the original logic - try any sRGB format first
-            surface_caps.formats.iter()
-                .copied()
-                .find(|f| f.is_srgb())
-                .unwrap_or(surface_caps.formats[0]) // Last resort - first available format
-        });
-    
-    let is_srgb = surface_format.is_srgb();
-    
+        .unwrap_or(surface_caps.formats[0]);
+    let is_srgb = false; // Always treat as linear
     console::log_1(&JsValue::from_str(&format!(
-        "Fast2D: Using surface format: {:?}, sRGB: {}",
-        surface_format, is_srgb
+        "Fast2D: Forcing linear surface format: {:?}",
+        surface_format
     )));
 
     // --- REMOVE View Formats Logic (Conditional) --- <<<<<<<<<<<< REMOVED
@@ -603,73 +591,17 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         None, // No depth/stencil
     );
 
-    // --- Shape Pipeline Setup --- <<<<<<<<<<<< REVERTED
-    // Load base shader and conditionally modify for sRGB conversion
-    let base_shader_source = include_str!("shaders/rectangle.wgsl");
-    let mut final_shader_source = Cow::Borrowed(base_shader_source);
-
-    // --- Re-introduce conditional shader injection ---
-    // Remove unnecessary parentheses
-    if !is_srgb { // Use stored value
-        console::warn_1(&JsValue::from_str(&format!(
-            "Fast2D: Surface format ({:?}) is not sRGB. Injecting manual sRGB conversion into shader.",
-            surface_format
-        )));
-
-        let srgb_fn = r#"
-// Injected sRGB conversion function
-fn linear_to_srgb(linear: vec3<f32>) -> vec3<f32> {
-    let cutoff = linear < vec3<f32>(0.0031308);
-    let higher = 1.055 * pow(linear, vec3<f32>(1.0 / 2.4)) - 0.055;
-    let lower = linear * 12.92;
-    return select(higher, lower, cutoff);
-}
-
-"#;
-        // Define the replacement code *without* the final closing brace
-        let modified_fs_main_return_body = "    let linear_color = in.color;\n    // Apply manual sRGB conversion for non-sRGB surface\n    return vec4<f32>(linear_to_srgb(linear_color.rgb), linear_color.a);"; // No final '}' here
-
-        // Find the position of the original return statement
-        if let Some(return_pos) = base_shader_source.rfind("return in.color;") {
-            // Find the position of the fragment shader entry point to insert the function before it
-            if let Some(fs_main_pos) = base_shader_source.find("@fragment") {
-                let mut modified_shader = String::with_capacity(base_shader_source.len() + srgb_fn.len() + 50);
-                // Part before the fragment shader
-                modified_shader.push_str(&base_shader_source[..fs_main_pos]);
-                // Insert the sRGB function
-                modified_shader.push_str(srgb_fn);
-                // Part from fragment shader start up to the original return statement
-                modified_shader.push_str(&base_shader_source[fs_main_pos..return_pos]);
-                // Insert the modified return statement body
-                modified_shader.push_str(modified_fs_main_return_body);
-
-                // Find the end of the original return statement to append the rest of the shader
-                let original_return_end = return_pos + "return in.color;".len();
-                modified_shader.push_str(&base_shader_source[original_return_end..]); // Append the rest, including the original '}'
-
-                final_shader_source = Cow::Owned(modified_shader);
-            } else {
-                 console::warn_1(&JsValue::from_str("Warning: Could not find '@fragment' marker to inject sRGB function. Manual sRGB conversion skipped."));
-            }
-        } else {
-             console::warn_1(&JsValue::from_str("Warning: Could not find 'return in.color;' to replace for sRGB conversion. Manual sRGB conversion skipped."));
-        }
-    }
-    // --- End re-introduced logic ---
-
-
+    // --- Shape Pipeline Setup ---
+    // Load base shader (no modification needed)
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shape Shader"),
-        source: wgpu::ShaderSource::Wgsl(final_shader_source), // Use potentially modified source
+        source: wgpu::ShaderSource::Wgsl(include_str!("shaders/rectangle.wgsl").into()),
     });
-
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Shape Pipeline Layout"),
         bind_group_layouts: &[&bind_group_layout],
         push_constant_ranges: &[],
     });
-
-    // Pipeline targets target_format (which is now always surface_format)
     let rect_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Shape Pipeline"),
         layout: Some(&pipeline_layout),
@@ -756,20 +688,8 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
 
     let mut glyph_buffers: Vec<GlyphonBuffer> = Vec::new();
 
-    // --- WebGL-specific blending adjustment for text --- <<<<<<<<<<<< MODIFIED
-    #[cfg(feature = "webgl")]
-    let text_alpha_gamma = 1.86; // Apply gamma correction unconditionally for WebGL
-    
-    #[cfg(not(feature = "webgl"))]
-    let text_alpha_gamma = 1.0; // No adjustment for non-WebGL backends
-
-    // Log the chosen text alpha adjustment
-    #[cfg(feature = "webgl")]
-    console::log_1(&JsValue::from_str(&format!(
-        "Fast2D: WebGL text alpha gamma correction: {} (Surface format: {:?}, is_srgb: {})",
-        text_alpha_gamma, gfx.surface_config.format, gfx.is_srgb
-    )));
-    // --- End WebGL-specific adjustment ---
+    // --- WebGL-specific blending adjustment for text ---
+    // (No longer needed, remove unused variable)
 
     for obj in objects {
         if let Object2d::Text(text) = obj {
@@ -783,28 +703,9 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
                 _ => GlyphonFamily::SansSerif,
             };
 
-            // --- Adjust alpha using our new gamma value --- <<<<<<<<<<<< MODIFIED
-            let adjusted_color = text.color; // Clone original color
-            
-            // Use the pre-calculated gamma value for all backends
-            let adjusted_color = if text_alpha_gamma != 1.0 {
-                let mut color = adjusted_color;
-                color.a = color.a.powf(text_alpha_gamma);
-                color
-            } else {
-                adjusted_color
-            };
-            // --- End Adjustment ---
-
-            // --- Revert to sRGB u8 input ---
-            // Use the potentially adjusted color for glyphon
-            let glyphon_color = adjusted_color.to_glyphon_color();
-
-            // Remove linear color logging
-            // if (!logged_text_color && !text.text.is_empty()) { ... }
+            let glyphon_color = text.color.to_glyphon_color(); // Remove premultiplication
 
             buffer.set_text(&mut font_system, &text.text, &Attrs::new().family(family_name).color(glyphon_color), Shaping::Advanced);
-            // --- End Revert ---
             glyph_buffers.push(buffer);
         }
     }
@@ -813,22 +714,7 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
     let mut buffer_idx = 0;
     for obj in objects {
         if let Object2d::Text(text) = obj {
-            // --- Adjust alpha using our new gamma value --- <<<<<<<<<<<< MODIFIED
-            let adjusted_color = text.color; // Clone original color
-            
-            // Use the pre-calculated gamma value for all backends
-            let adjusted_color = if text_alpha_gamma != 1.0 {
-                let mut color = adjusted_color;
-                color.a = color.a.powf(text_alpha_gamma);
-                color
-            } else {
-                adjusted_color
-            };
-            // --- End Adjustment ---
-
-            // --- Revert to sRGB u8 input ---
-            // Use the potentially adjusted color here too
-            let glyphon_color = adjusted_color.to_glyphon_color(); // <<<<<<<<<<<< USE ADJUSTED
+            let glyphon_color = text.color.to_glyphon_color(); // Remove premultiplication
 
             let text_width_f32 = text.width;
             let text_height_f32 = text.height;
@@ -846,7 +732,6 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
                 scale: 1.0,
                 custom_glyphs: &[],
             };
-            // --- End Revert ---
             text_areas.push(text_area);
             buffer_idx += 1;
         }
