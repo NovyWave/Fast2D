@@ -14,16 +14,12 @@ wasm-bindgen-test = "0.3.19"
 
 [dependencies]
 wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false }
-glyphon = "0.9.0"
-lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4" }
-bytemuck = { version = "*", features = ["derive"] }
-euclid = { version = "*", features = ["bytemuck"] }
-web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
+glyphon = { version = "0.9.0", default-features = false }
+lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", default-features = false }
+bytemuck = { version = "*", features = ["derive"], default-features = false }
+euclid = { version = "*", features = ["bytemuck"], default-features = false }
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"], default-features = false }
 
 [features]
-# @TODO replace `webgl` with `webgpu` once all relevant browsers and WebViews support WebGPU 
-# NOTE: Compressed Wasm module with`webgpu` has 125KB, with `webgl` 534KB, see
-# https://github.com/gfx-rs/wgpu/issues/1464
-default = ["webgl"]
 webgl = ["wgpu/webgl"]
 webgpu = ["wgpu/webgpu"]

@@ -1,7 +1,7 @@
 use zoon::*;
 
 use std::rc::Rc;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::f32::consts::PI; // Import PI for sine wave
 
 pub fn main() {
@@ -180,6 +180,7 @@ fn root() -> impl Element {
 
 fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
     let canvas_wrapper = Rc::new(RefCell::new(canvas_wrapper));
+    let pending_resized = Rc::new(Cell::new(None));
     El::new()
         .s(Align::center())
         .s(Clip::both())
@@ -187,9 +188,11 @@ fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
         // Give the panel a size constraint (e.g., fill available space up to a max)
         .s(Width::fill().max(650)) // Example max width
         .s(Height::exact(350)) // Example max height
-        .on_viewport_size_change(clone!((canvas_wrapper) move |width, height| {
+        .on_viewport_size_change(clone!((canvas_wrapper, pending_resized) move |width, height| {
             if let Ok(mut canvas_wrapper) = canvas_wrapper.try_borrow_mut() {
                 canvas_wrapper.resized(width, height);
+            } else {
+                pending_resized.set(Some((width, height)));
             }
         }))
         .child(
@@ -201,6 +204,9 @@ fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
                 .after_insert(move |canvas| {
                     Task::start(async move {
                         canvas_wrapper.borrow_mut().set_canvas(canvas).await;
+                        if let Some((width, height)) = pending_resized.take() {
+                            canvas_wrapper.borrow_mut().resized(width, height);
+                        }
                     });
                 })
         )
