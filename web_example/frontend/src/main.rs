@@ -42,13 +42,15 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .color(50, 0, 100, 1.0)
                         .into(),
                 );
+
                 objects.push(
                     fast2d::Text::new()
                         .text("Simple Rectangle")
                         .position(10.0, 50.0) // Use f32
                         .size(350.0, 120.0)   // Use f32
+                        // Revert to original alpha
                         .color(255, 255, 255, 0.2)
-                        .font_size(60.0)  
+                        .font_size(60.0)
                         // .family(fast2d::Family::Name("Fira Code"))
                         .into(),
                 );

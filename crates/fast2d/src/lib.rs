@@ -14,8 +14,8 @@ compile_error!("One rendering backend feature ('webgl', 'webgpu', or 'canvas') m
 
 // --- End of compile-time checks ---
 
-// Remove JsCast from the import
-use web_sys::{HtmlCanvasElement, wasm_bindgen::UnwrapThrowExt};
+// Correct the import for console
+use web_sys::{console, HtmlCanvasElement, wasm_bindgen::{UnwrapThrowExt, JsValue}};
 use cfg_if::cfg_if; // Use for conditional fields/logic
 
 // --- Conditional Imports ---
@@ -33,14 +33,15 @@ use {
     lyon::math::Box2D,
     lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder, StrokeTessellator, StrokeOptions, StrokeVertex, LineCap, LineJoin},
     // Remove Color as WgpuColor
-    wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, BindGroupLayout, BindGroup, Buffer as WgpuBuffer},
+    wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, BindGroupLayout, BindGroup, Buffer as WgpuBuffer, TextureViewDescriptor},
     wgpu::util::DeviceExt,
     std::sync::{OnceLock, Mutex},
     // Remove FamilyOwned as GlyphonFamilyOwned
     glyphon::{
         Cache, FontSystem, Shaping, Buffer as GlyphonBuffer,
         SwashCache, TextAtlas, TextRenderer, Viewport, TextArea,
-        Attrs, Color as GlyphonColor, TextBounds, Resolution, Metrics, Family as GlyphonFamily // Import GlyphonFamily
+        Attrs, TextBounds, Resolution, Metrics, Family as GlyphonFamily, // Import GlyphonFamily
+        ColorMode // Import ColorMode
     },
     bytemuck, // Import the crate itself
 };
@@ -82,7 +83,11 @@ pub fn init_font_system(font_data: Vec<&'static [u8]>) -> Result<(), FontSystemI
 
     // Wrap the initialized font_system in a Mutex before setting
     FONT_SYSTEM.set(Mutex::new(font_system))
-        .map_err(|_| FontSystemInitError::AlreadyInitialized)
+        .map_err(|_| {
+            // Use console::warn_1 for already initialized
+            console::warn_1(&JsValue::from_str("Warning: FontSystem already initialized."));
+            FontSystemInitError::AlreadyInitialized
+        })
 }
 
 // --- Conditional Structs ---
@@ -135,6 +140,7 @@ struct Graphics {
     queue: Queue,
     surface: Surface<'static>,
     surface_config: SurfaceConfiguration,
+    is_srgb: bool, // Add flag for surface format
     msaa_texture: Texture,
     swash_cache: SwashCache,
     viewport: glyphon::Viewport,
@@ -215,11 +221,19 @@ impl CanvasWrapper {
                     .dyn_into::<CanvasRenderingContext2d>() // JsCast is now in scope via conditional import
                     .unwrap_throw(); // Handle incorrect type
                 self.context = Some(context_object);
-                println!("Fast2D: Initialized with Canvas backend.");
+                // Use console::log_1
+                console::log_1(&JsValue::from_str("Fast2D: Initialized with Canvas backend."));
             } else {
                 // Initialize WGPU graphics (uses width, height)
                 self.graphics = Some(create_graphics(canvas, width, height).await);
-                 println!("Fast2D: Initialized with WGPU/WebGL backend.");
+                 // Use console::log_1 with conditional message
+                 #[cfg(feature = "webgl")]
+                 console::log_1(&JsValue::from_str("Fast2D: Initialized with WebGL backend."));
+                 #[cfg(feature = "webgpu")] // This message is correctly logged when webgpu feature is enabled
+                 console::log_1(&JsValue::from_str("Fast2D: Initialized with WebGPU backend."));
+                 // Fallback in case neither is explicitly set but canvas isn't either (shouldn't happen with compile checks)
+                 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
+                 console::log_1(&JsValue::from_str("Fast2D: Initialized with WGPU/WebGL backend (feature unclear)."));
             }
         }
         self.draw(); // Initial draw
@@ -416,12 +430,21 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         .await
         .unwrap_throw();
 
+    // --- REMOVE Get Adapter Features --- <<<<<<<<<<<< REMOVED
+    // let features = adapter.features();
+    // let supports_view_formats = features.contains(wgpu::Features::SURFACE_VIEW_FORMATS);
+    // console::log_1(&JsValue::from_str(&format!(
+    //     "Fast2D: Adapter supports SURFACE_VIEW_FORMATS: {}",
+    //     supports_view_formats
+    // )));
+
     let (device, queue) = adapter
         .request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("WGPU Device"),
                 memory_hints: wgpu::MemoryHints::default(),
-                required_features: wgpu::Features::default(),
+                // Remove conditional feature request
+                required_features: wgpu::Features::empty(), // Request no extra features for simplicity now
                 #[cfg(feature = "webgpu")]
                 required_limits: wgpu::Limits::default().using_resolution(adapter.limits()),
                 #[cfg(feature = "webgl")]
@@ -433,23 +456,59 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         .await
         .unwrap_throw();
 
-
     let surface_caps = surface.get_capabilities(&adapter);
-    let surface_format = surface_caps.formats.iter()
+    
+    // Prefer sRGB formats for consistent color handling
+    let preferred_formats = [
+        wgpu::TextureFormat::Bgra8UnormSrgb,
+        wgpu::TextureFormat::Rgba8UnormSrgb,
+    ];
+    
+    // First try to find a preferred sRGB format that's supported
+    let surface_format = preferred_formats.iter()
         .copied()
-        .filter(|f| f.is_srgb())
-        .next()
-        .unwrap_or(surface_caps.formats[0]);
+        .find(|format| surface_caps.formats.contains(format))
+        .unwrap_or_else(|| {
+            // If none of our preferred formats are available,
+            // fall back to the original logic - try any sRGB format first
+            surface_caps.formats.iter()
+                .copied()
+                .find(|f| f.is_srgb())
+                .unwrap_or(surface_caps.formats[0]) // Last resort - first available format
+        });
+    
+    let is_srgb = surface_format.is_srgb();
+    
+    console::log_1(&JsValue::from_str(&format!(
+        "Fast2D: Using surface format: {:?}, sRGB: {}",
+        surface_format, is_srgb
+    )));
+
+    // --- REMOVE View Formats Logic (Conditional) --- <<<<<<<<<<<< REMOVED
+    // let mut config_view_formats = vec![];
+    // let mut texture_view_formats_slice: Vec<wgpu::TextureFormat> = vec![];
+    let target_format = surface_format; // Target format must match surface format
+    // console::log_1(&JsValue::from_str(&format!(
+    //     "Fast2D: Pipeline target and Surface config: {:?}",
+    //     target_format
+    // )));
+    // --- End REMOVAL ---
+
+    // Log the chosen format
+    // console::log_1(&JsValue::from_str(&format!(
+    //     "Fast2D: Using surface format ({:?}). sRGB={}",
+    //     surface_format, is_srgb // Use stored value
+    // )));
 
     let surface_config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        format: surface_format,
-        width, // Use passed width
-        height, // Use passed height
+        format: surface_format, // Use the chosen sRGB (or fallback) format for the surface itself
+        width,
+        height,
         present_mode: surface_caps.present_modes[0],
         desired_maximum_frame_latency: 2,
-        alpha_mode: surface_caps.alpha_modes[0],
-        view_formats: vec![], // Use vec![] or Vec::new()
+        alpha_mode: surface_caps.alpha_modes[0], // Use default alpha mode
+        view_formats: vec![], // Set to empty as feature is not used/available <<<<<<<<<<<< REVERTED
     };
     surface.configure(&device, &surface_config);
 
@@ -491,7 +550,8 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
     });
 
 
-    // Create multisample texture using passed dimensions
+    // --- MSAA Texture --- <<<<<<<<<<<< REVERTED
+    // Create multisample texture using the surface_format, but allow viewing with all formats
     let msaa_texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("MSAA Texture"),
         size: wgpu::Extent3d {
@@ -502,17 +562,36 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         mip_level_count: 1,
         sample_count: MSAA_SAMPLE_COUNT,
         dimension: wgpu::TextureDimension::D2,
-        format: surface_format,
+        format: surface_format, // Create with the surface format
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        view_formats: &[],
+        view_formats: &[], // Set to empty <<<<<<<<<<<< REVERTED
     });
 
-    // --- Text Rendering Setup ---
+    // --- Text Rendering Setup --- <<<<<<<<<<<< REVERTED
     let swash_cache = SwashCache::new();
     let cache = Cache::new(&device);
     let mut viewport = Viewport::new(&device, &cache);
     viewport.update(&queue, Resolution { width, height });
-    let mut atlas = TextAtlas::new(&device, &queue, &cache, surface_format);
+
+    // --- Use original ColorMode logic (Accurate for sRGB) ---
+    let color_mode = if is_srgb {
+        console::log_1(&JsValue::from_str("Fast2D: Using Glyphon ColorMode::Accurate for sRGB target."));
+        ColorMode::Accurate
+    } else {
+        console::log_1(&JsValue::from_str("Fast2D: Using Glyphon ColorMode::Web for non-sRGB target."));
+        ColorMode::Web // Default, performs internal sRGB->linear
+    };
+
+    // Create atlas using the *target_format* (non-sRGB if surface is sRGB)
+    let mut atlas = TextAtlas::with_color_mode(
+        &device,
+        &queue,
+        &cache,
+        target_format, // Use target_format (== surface_format)
+        color_mode,
+    );
+
+    // Create TextRenderer using the configured atlas
     let text_renderer = TextRenderer::new(
         &mut atlas,
         &device,
@@ -521,13 +600,67 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
             mask: !0,
             alpha_to_coverage_enabled: false,
         },
-        None,
+        None, // No depth/stencil
     );
 
-    // --- Shape Pipeline Setup ---
+    // --- Shape Pipeline Setup --- <<<<<<<<<<<< REVERTED
+    // Load base shader and conditionally modify for sRGB conversion
+    let base_shader_source = include_str!("shaders/rectangle.wgsl");
+    let mut final_shader_source = Cow::Borrowed(base_shader_source);
+
+    // --- Re-introduce conditional shader injection ---
+    // Remove unnecessary parentheses
+    if !is_srgb { // Use stored value
+        console::warn_1(&JsValue::from_str(&format!(
+            "Fast2D: Surface format ({:?}) is not sRGB. Injecting manual sRGB conversion into shader.",
+            surface_format
+        )));
+
+        let srgb_fn = r#"
+// Injected sRGB conversion function
+fn linear_to_srgb(linear: vec3<f32>) -> vec3<f32> {
+    let cutoff = linear < vec3<f32>(0.0031308);
+    let higher = 1.055 * pow(linear, vec3<f32>(1.0 / 2.4)) - 0.055;
+    let lower = linear * 12.92;
+    return select(higher, lower, cutoff);
+}
+
+"#;
+        // Define the replacement code *without* the final closing brace
+        let modified_fs_main_return_body = "    let linear_color = in.color;\n    // Apply manual sRGB conversion for non-sRGB surface\n    return vec4<f32>(linear_to_srgb(linear_color.rgb), linear_color.a);"; // No final '}' here
+
+        // Find the position of the original return statement
+        if let Some(return_pos) = base_shader_source.rfind("return in.color;") {
+            // Find the position of the fragment shader entry point to insert the function before it
+            if let Some(fs_main_pos) = base_shader_source.find("@fragment") {
+                let mut modified_shader = String::with_capacity(base_shader_source.len() + srgb_fn.len() + 50);
+                // Part before the fragment shader
+                modified_shader.push_str(&base_shader_source[..fs_main_pos]);
+                // Insert the sRGB function
+                modified_shader.push_str(srgb_fn);
+                // Part from fragment shader start up to the original return statement
+                modified_shader.push_str(&base_shader_source[fs_main_pos..return_pos]);
+                // Insert the modified return statement body
+                modified_shader.push_str(modified_fs_main_return_body);
+
+                // Find the end of the original return statement to append the rest of the shader
+                let original_return_end = return_pos + "return in.color;".len();
+                modified_shader.push_str(&base_shader_source[original_return_end..]); // Append the rest, including the original '}'
+
+                final_shader_source = Cow::Owned(modified_shader);
+            } else {
+                 console::warn_1(&JsValue::from_str("Warning: Could not find '@fragment' marker to inject sRGB function. Manual sRGB conversion skipped."));
+            }
+        } else {
+             console::warn_1(&JsValue::from_str("Warning: Could not find 'return in.color;' to replace for sRGB conversion. Manual sRGB conversion skipped."));
+        }
+    }
+    // --- End re-introduced logic ---
+
+
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shape Shader"),
-        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("shaders/rectangle.wgsl"))),
+        source: wgpu::ShaderSource::Wgsl(final_shader_source), // Use potentially modified source
     });
 
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -536,6 +669,7 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         push_constant_ranges: &[],
     });
 
+    // Pipeline targets target_format (which is now always surface_format)
     let rect_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("Shape Pipeline"),
         layout: Some(&pipeline_layout),
@@ -550,7 +684,7 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
             entry_point: Some("fs_main"),
             compilation_options: Default::default(),
             targets: &[Some(wgpu::ColorTargetState {
-                format: surface_format,
+                format: target_format, // Use target_format (== surface_format)
                 blend: Some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
@@ -578,7 +712,8 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         device,
         queue,
         surface,
-        surface_config,
+        surface_config, // Store the original config
+        is_srgb, // Store the flag
         msaa_texture,
         swash_cache,
         viewport,
@@ -592,12 +727,12 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
 }
 
 #[cfg(not(feature = "canvas"))]
-// Renamed from draw to draw_wgpu
 fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
     let output = match gfx.surface.get_current_texture() {
         Ok(texture) => texture,
         Err(e) => {
-            eprintln!("Error getting current texture: {:?}", e);
+            // Use console::error_1
+            console::error_1(&JsValue::from_str(&format!("Error getting current texture: {:?}", e)));
             if e == wgpu::SurfaceError::Lost {
                  gfx.surface.configure(&gfx.device, &gfx.surface_config);
                  return;
@@ -605,10 +740,12 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
             return;
         }
     };
-    let view = output
-        .texture
-        .create_view(&wgpu::TextureViewDescriptor::default());
-    let msaa_view = gfx.msaa_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+    // --- Removed target_is_srgb check ---
+
+    // Create views using default descriptor
+    let view = output.texture.create_view(&TextureViewDescriptor::default());
+    let msaa_view = gfx.msaa_texture.create_view(&TextureViewDescriptor::default());
 
 
     // --- Text Preparation ---
@@ -618,6 +755,22 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
         .expect("Failed to lock FontSystem Mutex");
 
     let mut glyph_buffers: Vec<GlyphonBuffer> = Vec::new();
+
+    // --- WebGL-specific blending adjustment for text --- <<<<<<<<<<<< MODIFIED
+    #[cfg(feature = "webgl")]
+    let text_alpha_gamma = 1.86; // Apply gamma correction unconditionally for WebGL
+    
+    #[cfg(not(feature = "webgl"))]
+    let text_alpha_gamma = 1.0; // No adjustment for non-WebGL backends
+
+    // Log the chosen text alpha adjustment
+    #[cfg(feature = "webgl")]
+    console::log_1(&JsValue::from_str(&format!(
+        "Fast2D: WebGL text alpha gamma correction: {} (Surface format: {:?}, is_srgb: {})",
+        text_alpha_gamma, gfx.surface_config.format, gfx.is_srgb
+    )));
+    // --- End WebGL-specific adjustment ---
+
     for obj in objects {
         if let Object2d::Text(text) = obj {
             let text_width_f32 = text.width;
@@ -629,13 +782,29 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
                 FamilyOwned::Name(name) => GlyphonFamily::Name(name.as_str()),
                 _ => GlyphonFamily::SansSerif,
             };
-            let glyphon_color = GlyphonColor::rgba(
-                (text.color.r * 255.0).clamp(0.0, 255.0) as u8,
-                (text.color.g * 255.0).clamp(0.0, 255.0) as u8,
-                (text.color.b * 255.0).clamp(0.0, 255.0) as u8,
-                (text.color.a * 255.0).clamp(0.0, 255.0) as u8,
-            );
+
+            // --- Adjust alpha using our new gamma value --- <<<<<<<<<<<< MODIFIED
+            let adjusted_color = text.color; // Clone original color
+            
+            // Use the pre-calculated gamma value for all backends
+            let adjusted_color = if text_alpha_gamma != 1.0 {
+                let mut color = adjusted_color;
+                color.a = color.a.powf(text_alpha_gamma);
+                color
+            } else {
+                adjusted_color
+            };
+            // --- End Adjustment ---
+
+            // --- Revert to sRGB u8 input ---
+            // Use the potentially adjusted color for glyphon
+            let glyphon_color = adjusted_color.to_glyphon_color();
+
+            // Remove linear color logging
+            // if (!logged_text_color && !text.text.is_empty()) { ... }
+
             buffer.set_text(&mut font_system, &text.text, &Attrs::new().family(family_name).color(glyphon_color), Shaping::Advanced);
+            // --- End Revert ---
             glyph_buffers.push(buffer);
         }
     }
@@ -644,12 +813,23 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
     let mut buffer_idx = 0;
     for obj in objects {
         if let Object2d::Text(text) = obj {
-            let glyphon_color = GlyphonColor::rgba(
-                (text.color.r * 255.0).clamp(0.0, 255.0) as u8,
-                (text.color.g * 255.0).clamp(0.0, 255.0) as u8,
-                (text.color.b * 255.0).clamp(0.0, 255.0) as u8,
-                (text.color.a * 255.0).clamp(0.0, 255.0) as u8,
-            );
+            // --- Adjust alpha using our new gamma value --- <<<<<<<<<<<< MODIFIED
+            let adjusted_color = text.color; // Clone original color
+            
+            // Use the pre-calculated gamma value for all backends
+            let adjusted_color = if text_alpha_gamma != 1.0 {
+                let mut color = adjusted_color;
+                color.a = color.a.powf(text_alpha_gamma);
+                color
+            } else {
+                adjusted_color
+            };
+            // --- End Adjustment ---
+
+            // --- Revert to sRGB u8 input ---
+            // Use the potentially adjusted color here too
+            let glyphon_color = adjusted_color.to_glyphon_color(); // <<<<<<<<<<<< USE ADJUSTED
+
             let text_width_f32 = text.width;
             let text_height_f32 = text.height;
             let text_area = TextArea {
@@ -662,10 +842,11 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
                      right: (text.left + text_width_f32) as i32,
                      bottom: (text.top + text_height_f32) as i32,
                  },
-                default_color: glyphon_color,
+                default_color: glyphon_color, // Use adjusted sRGB color
                 scale: 1.0,
                 custom_glyphs: &[],
             };
+            // --- End Revert ---
             text_areas.push(text_area);
             buffer_idx += 1;
         }
@@ -676,7 +857,8 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
         text_areas.into_iter(), &mut gfx.swash_cache,
     ) {
         Ok(_) => {}
-        Err(e) => eprintln!("Error preparing text renderer: {:?}", e),
+        // Use console::error_1
+        Err(e) => console::error_1(&JsValue::from_str(&format!("Error preparing text renderer: {:?}", e))),
     }
 
     // --- Shape Tessellation ---
@@ -687,7 +869,8 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
     for obj in objects {
         match obj {
             Object2d::Rectangle(rect) => {
-                let color = [rect.color.r as f32, rect.color.g as f32, rect.color.b as f32, rect.color.a as f32];
+                // Convert input sRGB color to linear for vertex buffer
+                let linear_color = rect.color.to_linear();
                 let mut builder = Path::builder();
                 let rect_box = Box2D::new(point(rect.position.x, rect.position.y), point(rect.position.x + rect.size.width, rect.position.y + rect.size.height));
                 if rect.border_radii.top_left > 0.0 || rect.border_radii.top_right > 0.0 || rect.border_radii.bottom_left > 0.0 || rect.border_radii.bottom_right > 0.0 {
@@ -697,46 +880,50 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
                 }
                 let path = builder.build();
                 if rect.color.a > 0.0 {
-                    fill_tessellator.tessellate_path(&path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color })).unwrap();
+                    fill_tessellator.tessellate_path(&path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
                 }
                 if let (Some(border_width), Some(border_color_val)) = (rect.border_width, rect.border_color) {
                     if border_width > 0.0 && border_color_val.a > 0.0 {
-                        let border_color = [border_color_val.r as f32, border_color_val.g as f32, border_color_val.b as f32, border_color_val.a as f32];
+                        // Convert border color to linear
+                        let linear_border_color = border_color_val.to_linear();
                         let options = StrokeOptions::default().with_line_width(border_width);
-                        stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: border_color })).unwrap();
+                        stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
                     }
                 }
             }
             Object2d::Circle(circle) => {
-                 let color = [circle.color.r as f32, circle.color.g as f32, circle.color.b as f32, circle.color.a as f32];
+                 // Convert input sRGB color to linear
+                 let linear_color = circle.color.to_linear();
                  let mut builder = Path::builder();
                  builder.add_circle(point(circle.center.x, circle.center.y), circle.radius, Winding::Positive);
                  let path = builder.build();
                  if circle.color.a > 0.0 {
-                     fill_tessellator.tessellate_path(&path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color })).unwrap();
+                     fill_tessellator.tessellate_path(&path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
                  }
                  if let (Some(border_width), Some(border_color_val)) = (circle.border_width, circle.border_color) {
                      if border_width > 0.0 && border_color_val.a > 0.0 {
-                         let border_color = [border_color_val.r as f32, border_color_val.g as f32, border_color_val.b as f32, border_color_val.a as f32];
+                         // Convert border color to linear
+                         let linear_border_color = border_color_val.to_linear();
                          let options = StrokeOptions::default().with_line_width(border_width);
-                         stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: border_color })).unwrap();
+                         stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
                      }
                  }
             }
             Object2d::Line(line) => {
-                 let color = [line.color.r as f32, line.color.g as f32, line.color.b as f32, line.color.a as f32];
+                 // Convert input sRGB color to linear
+                 let linear_color = line.color.to_linear();
                  let mut builder = Path::builder();
                  if line.points.len() >= 2 {
                      builder.begin(point(line.points[0].x, line.points[0].y));
                      for i in 1..line.points.len() {
                          builder.line_to(point(line.points[i].x, line.points[i].y));
                      }
-                     builder.end(false);
+                     builder.end(false); // Don't close the path for a line
                  }
                  let path = builder.build();
-                 if line.points.len() >= 2 {
+                 if line.points.len() >= 2 && line.color.a > 0.0 { // Check alpha here
                     let options = StrokeOptions::default().with_line_width(line.width).with_line_cap(LineCap::Round).with_line_join(LineJoin::Round);
-                    stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color })).unwrap();
+                    stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
                  }
             }
             Object2d::Text(_) => {} // Handled by glyphon
@@ -757,23 +944,25 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &msaa_view, resolve_target: Some(&view),
+                view: &msaa_view, // Render to MSAA view (surface_format)
+                resolve_target: Some(&view), // Resolve to the surface view (surface_format)
                 ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: wgpu::StoreOp::Store },
             })],
             depth_stencil_attachment: None, timestamp_writes: None, occlusion_query_set: None,
         });
 
         if num_indices > 0 {
-            render_pass.set_pipeline(&gfx.rect_pipeline);
+            render_pass.set_pipeline(&gfx.rect_pipeline); // Pipeline targets surface_format
             render_pass.set_bind_group(0, &gfx.bind_group, &[]);
-            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..)); // Contains linear colors
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.draw_indexed(0..num_indices, 0, 0..1);
         }
 
+        // Render text (Glyphon renders to the same render pass, targeting surface_format)
         match gfx.text_renderer.render(&gfx.atlas, &gfx.viewport, &mut render_pass) {
              Ok(_) => {}
-             Err(e) => eprintln!("Error rendering text: {:?}", e),
+             Err(e) => console::error_1(&JsValue::from_str(&format!("Error rendering text: {:?}", e))),
          }
     }
     gfx.queue.submit(std::iter::once(encoder.finish()));

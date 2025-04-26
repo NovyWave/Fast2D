@@ -44,6 +44,53 @@ impl Color {
             self.a
         )
     }
+
+    // --- sRGB / Linear Conversion ---
+    // Convert sRGB color component to linear
+    #[cfg(not(feature = "canvas"))]
+    fn srgb_to_linear(c: f32) -> f32 {
+        if c <= 0.04045 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    }
+
+    // Convert this Color (assumed sRGB) to linear RGBA values for vertex buffers
+    #[cfg(not(feature = "canvas"))]
+    pub fn to_linear(&self) -> [f32; 4] {
+        [
+            Self::srgb_to_linear(self.r),
+            Self::srgb_to_linear(self.g),
+            Self::srgb_to_linear(self.b),
+            self.a, // Alpha is linear
+        ]
+    }
+
+     // Convert this Color (assumed sRGB) to Glyphon's Color type (u8)
+     // Always pass direct sRGB f32 values scaled to u8 range.
+     #[cfg(not(feature = "canvas"))]
+     pub fn to_glyphon_color(&self) -> GlyphonColor {
+         GlyphonColor::rgba(
+             (self.r * 255.0).clamp(0.0, 255.0) as u8,
+             (self.g * 255.0).clamp(0.0, 255.0) as u8,
+             (self.b * 255.0).clamp(0.0, 255.0) as u8,
+             (self.a * 255.0).clamp(0.0, 255.0) as u8,
+         )
+     }
+
+    // Convert this Color (assumed sRGB) to LINEAR values scaled to u8 for Glyphon.
+    // Used when target is sRGB and ColorMode::Accurate is set.
+    #[cfg(not(feature = "canvas"))]
+    pub fn to_glyphon_color_linear(&self) -> GlyphonColor {
+        let linear = self.to_linear();
+        GlyphonColor::rgba(
+            (linear[0] * 255.0).clamp(0.0, 255.0) as u8,
+            (linear[1] * 255.0).clamp(0.0, 255.0) as u8,
+            (linear[2] * 255.0).clamp(0.0, 255.0) as u8,
+            (linear[3] * 255.0).clamp(0.0, 255.0) as u8, // Alpha
+        )
+    }
 }
 
 // Simple Point struct
@@ -93,5 +140,8 @@ impl BorderRadii {
 // Conditionally export FamilyOwned from glyphon
 #[cfg(not(feature = "canvas"))]
 pub use glyphon::FamilyOwned;
+
+#[cfg(not(feature = "canvas"))]
+use glyphon::Color as GlyphonColor; // Conditionally import GlyphonColor
 
 // Ensure no duplicate definitions remain below this line
