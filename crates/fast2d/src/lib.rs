@@ -29,8 +29,6 @@ pub use object_2d::circle::Circle;
 pub use object_2d::line::Line;
 // Removed: pub use object_2d::types::FamilyOwned;
 
-const CANVAS_WIDTH: u32 = 350;
-const CANVAS_HEIGHT: u32 = 350;
 const MSAA_SAMPLE_COUNT: u32 = 4; // Multisampling for anti-aliasing
 
 // Define the uniform structure (must match WGSL and be 16-byte aligned)
@@ -69,8 +67,12 @@ impl CanvasWrapper {
     }
 
     pub async fn set_canvas(&mut self, canvas: HtmlCanvasElement) {
+        // Ensure width and height are at least 1
+        let width = canvas.width().max(1);
+        let height = canvas.height().max(1);
         self.canvas = Some(canvas.clone());
-        self.graphics = Some(create_graphics(canvas).await);
+        // Pass width and height to create_graphics
+        self.graphics = Some(create_graphics(canvas, width, height).await);
         self.draw();
     }
 
@@ -163,7 +165,7 @@ impl ColoredVertex { // Renamed from RectVertex
 }
 
 
-async fn create_graphics(canvas: HtmlCanvasElement) -> Graphics {
+async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> Graphics {
     let instance = wgpu::Instance::default();
     let surface = instance
         .create_surface(SurfaceTarget::Canvas(canvas))
@@ -206,8 +208,8 @@ async fn create_graphics(canvas: HtmlCanvasElement) -> Graphics {
     let surface_config = wgpu::SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format: surface_format,
-        width: CANVAS_WIDTH,
-        height: CANVAS_HEIGHT,
+        width, // Use passed width
+        height, // Use passed height
         present_mode: surface_caps.present_modes[0],
         desired_maximum_frame_latency: 2,
         alpha_mode: surface_caps.alpha_modes[0],
@@ -218,8 +220,8 @@ async fn create_graphics(canvas: HtmlCanvasElement) -> Graphics {
 
     // --- Uniform Buffer Setup ---
     let uniforms = CanvasUniforms {
-        width: surface_config.width as f32,
-        height: surface_config.height as f32,
+        width: width as f32, // Use passed width
+        height: height as f32, // Use passed height
         _padding1: 0.0,
         _padding2: 0.0,
     };
@@ -253,12 +255,12 @@ async fn create_graphics(canvas: HtmlCanvasElement) -> Graphics {
     });
 
 
-    // Create multisample texture
+    // Create multisample texture using passed dimensions
     let msaa_texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("MSAA Texture"),
         size: wgpu::Extent3d {
-            width: surface_config.width,
-            height: surface_config.height,
+            width, // Use passed width
+            height, // Use passed height
             depth_or_array_layers: 1,
         },
         mip_level_count: 1,
@@ -276,8 +278,10 @@ async fn create_graphics(canvas: HtmlCanvasElement) -> Graphics {
     };
     let swash_cache = SwashCache::new();
     let cache = Cache::new(&device);
-    // Correct Viewport::new call
-    let viewport = Viewport::new(&device, &cache);
+    // Create Viewport using ::new
+    let mut viewport = Viewport::new(&device, &cache);
+    // Update viewport with initial resolution immediately after creation
+    viewport.update(&queue, Resolution { width, height });
     let mut atlas = TextAtlas::new(&device, &queue, &cache, surface_format);
     let text_renderer = TextRenderer::new(
         &mut atlas,
