@@ -188,7 +188,9 @@ fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
         .s(Width::fill().max(650)) // Example max width
         .s(Height::exact(350)) // Example max height
         .on_viewport_size_change(clone!((canvas_wrapper) move |width, height| {
-            canvas_wrapper.borrow_mut().resized(width, height);
+            if let Ok(mut canvas_wrapper) = canvas_wrapper.try_borrow_mut() {
+                canvas_wrapper.resized(width, height);
+            }
         }))
         .child(
             Canvas::new()

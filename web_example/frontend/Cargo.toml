@@ -6,4 +6,4 @@ publish.workspace = true
 
 [dependencies]
 zoon.workspace = true
-fast2d = { path = "../../crates/fast2d" }
+fast2d = { path = "../../crates/fast2d", features = ["webgpu"], default-features = false }
