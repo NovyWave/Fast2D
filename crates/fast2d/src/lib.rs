@@ -1,8 +1,9 @@
 pub use zoon;
 
-use zoon::wasm_bindgen::throw_str;
-use zoon::web_sys::HtmlCanvasElement;
-use zoon::UnwrapThrowExt;
+use zoon::wasm_bindgen::{throw_str, prelude::{Closure, JsValue, UnwrapThrowExt, JsCast}};
+use zoon::js_sys::Promise;
+use zoon::web_sys::{HtmlCanvasElement, window};
+use zoon::wasm_bindgen_futures::JsFuture;
 
 use std::sync::Arc;
 use std::borrow::Cow;
@@ -130,6 +131,24 @@ impl CanvasWrapper {
 
     async fn draw(&mut self) {
         if let Some(graphics) = &mut self.graphics {
+            // // Create a Promise that resolves on the next animation frame
+            let promise = Promise::new(&mut |resolve, _reject| {
+                window()
+                    .unwrap_throw()
+                    .request_animation_frame(
+                        Closure::once_into_js(move |_time: JsValue| {
+                            // Resolve the promise when the animation frame callback executes
+                            resolve.call0(&JsValue::undefined()).unwrap_throw();
+                        })
+                        .as_ref()
+                        .unchecked_ref(), // Cast Closure to Function reference
+                    )
+                    .unwrap_throw(); // Handle potential error from request_animation_frame
+            });
+
+            // Convert the JavaScript Promise to a Rust Future and await it
+            JsFuture::from(promise).await.unwrap_throw(); // Handle potential error during await
+
             draw(graphics, &self.objects);
         }
     }
