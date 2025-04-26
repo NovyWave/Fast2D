@@ -7,7 +7,7 @@ pub fn main() {
     start_app("app", root);
 }
 
-async fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
+fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
     [
         { // Canvas 0: Simple Rectangle
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
@@ -29,7 +29,7 @@ async fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                         .size(350, 120) // Use new size instead of bounds
                         .into(),
                 );
-            }).await;
+            });
             canvas_wrapper
         },
         { // Canvas 1: Sine Wave
@@ -64,7 +64,7 @@ async fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                         .size(300, 50) // Use new size instead of bounds
                         .into(),
                 );
-            }).await;
+            });
             canvas_wrapper
         },
         { // Canvas 2: Simple Face
@@ -156,7 +156,7 @@ async fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                         .size(300, 50) // Use new size instead of bounds
                         .into(),
                 );
-            }).await;
+            });
             canvas_wrapper
         }
     ]
@@ -173,14 +173,7 @@ fn root() -> impl Element {
                 .s(Gap::both(10)) // Add gap between panels
                 .s(Scrollbars::both())
                 .s(Padding::all(10))
-                .items_signal_vec(
-                    canvas_wrappers()
-                        .map(Vec::from)
-                        .into_signal_option()
-                        .map(Option::unwrap_or_default)
-                        .to_signal_vec()
-                        .map(panel_with_canvas)
-                )
+                .items(canvas_wrappers().map(panel_with_canvas))
         )
 }
 
@@ -194,10 +187,7 @@ fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
         .s(Width::fill().max(650)) // Example max width
         .s(Height::exact(350)) // Example max height
         .on_viewport_size_change(clone!((canvas_wrapper) move |width, height| {
-            let canvas_wrapper = canvas_wrapper.clone();
-            Task::start(async move {
-                canvas_wrapper.borrow_mut().resized(width, height).await;
-            });
+            canvas_wrapper.borrow_mut().resized(width, height);
         }))
         .child(
             Canvas::new()
@@ -206,7 +196,6 @@ fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
                 .s(Width::fill()) // Style will override layout width
                 .s(Height::fill()) // Added fill height style
                 .after_insert(move |canvas| {
-                    // Spawn the async function as a task
                     Task::start(async move {
                         canvas_wrapper.borrow_mut().set_canvas(canvas).await;
                     });

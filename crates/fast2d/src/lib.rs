@@ -1,9 +1,7 @@
 pub use zoon;
 
-use zoon::wasm_bindgen::{throw_str, prelude::{Closure, JsValue, UnwrapThrowExt, JsCast}};
-use zoon::js_sys::Promise;
-use zoon::web_sys::{HtmlCanvasElement, window};
-use zoon::wasm_bindgen_futures::JsFuture;
+use zoon::wasm_bindgen::{throw_str, UnwrapThrowExt};
+use zoon::web_sys::HtmlCanvasElement;
 
 use std::sync::Arc;
 use std::borrow::Cow;
@@ -76,15 +74,15 @@ impl CanvasWrapper {
     pub async fn set_canvas(&mut self, canvas: HtmlCanvasElement) {
         self.canvas = Some(canvas.clone());
         self.graphics = Some(create_graphics(canvas).await);
-        self.draw().await;
+        self.draw();
     }
 
-    pub async fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) {
+    pub fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) {
         updater(&mut self.objects);
-        self.draw().await;
+        self.draw();
     }
 
-    pub async fn resized(&mut self, width: u32, height: u32) {
+    pub fn resized(&mut self, width: u32, height: u32) {
         if let Some(graphics) = &mut self.graphics {
             // Ensure width and height are not zero, which can cause issues
             let new_width = width.max(1);
@@ -126,29 +124,11 @@ impl CanvasWrapper {
             graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
         }
-        self.draw().await;
+        self.draw();
     }
 
-    async fn draw(&mut self) {
+    fn draw(&mut self) {
         if let Some(graphics) = &mut self.graphics {
-            // // Create a Promise that resolves on the next animation frame
-            let promise = Promise::new(&mut |resolve, _reject| {
-                window()
-                    .unwrap_throw()
-                    .request_animation_frame(
-                        Closure::once_into_js(move |_time: JsValue| {
-                            // Resolve the promise when the animation frame callback executes
-                            resolve.call0(&JsValue::undefined()).unwrap_throw();
-                        })
-                        .as_ref()
-                        .unchecked_ref(), // Cast Closure to Function reference
-                    )
-                    .unwrap_throw(); // Handle potential error from request_animation_frame
-            });
-
-            // Convert the JavaScript Promise to a Rust Future and await it
-            JsFuture::from(promise).await.unwrap_throw(); // Handle potential error during await
-
             draw(graphics, &self.objects);
         }
     }
