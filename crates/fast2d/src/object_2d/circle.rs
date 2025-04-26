@@ -1,54 +1,54 @@
-use lyon::math::Point;
-use wgpu::Color as WgpuColor;
+use super::types::{Position, Color};
 use crate::Object2d;
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct Circle {
-    pub(crate) center: Point,
-    pub(crate) radius: f32,
-    pub(crate) color: WgpuColor,
-    pub(crate) border_width: Option<f32>,
-    pub(crate) border_color: Option<WgpuColor>,
+    pub(crate) center: Position, // Uses updated Position (f32)
+    pub(crate) radius: f32,      // Change to f32
+    pub(crate) color: Color,
+    pub(crate) border_width: Option<f32>, // Change to f32
+    pub(crate) border_color: Option<Color>,
 }
 
 impl Circle {
     pub fn new() -> Self {
         Self {
-            center: Point::new(0.0, 0.0),
-            radius: 50.0, // Default radius
-            color: WgpuColor { r: 0.0, g: 0.0, b: 0.0, a: 0.0 }, // Default transparent
+            center: Position::default(),
+            radius: 0.0, // Default to 0.0 f32
+            color: Color::default(),
             border_width: None,
             border_color: None,
         }
     }
 
-    pub fn center(mut self, x: i32, y: i32) -> Self {
-        self.center = Point::new(x as f32, y as f32);
+    pub fn center(mut self, x: f32, y: f32) -> Self { // Accept f32
+        self.center = Position { x, y };
         self
     }
 
-    pub fn radius(mut self, radius: u32) -> Self {
-        self.radius = radius as f32;
+    pub fn radius(mut self, radius: f32) -> Self { // Accept f32
+        self.radius = radius;
         self
     }
 
     pub fn color(mut self, r: u8, g: u8, b: u8, a: f64) -> Self {
-        self.color = WgpuColor {
+        self.color = Color {
             r: r as f64 / 255.0,
             g: g as f64 / 255.0,
             b: b as f64 / 255.0,
-            a: a,
+            a,
         };
         self
     }
 
-    pub fn inner_border(mut self, width: u32, r: u8, g: u8, b: u8, a: f64) -> Self {
-        self.border_width = Some(width as f32);
-        self.border_color = Some(WgpuColor {
+    // Renamed from inner_border
+    pub fn border(mut self, width: f32, r: u8, g: u8, b: u8, a: f64) -> Self { // Accept f32 for width
+        self.border_width = Some(width);
+        self.border_color = Some(Color {
             r: r as f64 / 255.0,
             g: g as f64 / 255.0,
             b: b as f64 / 255.0,
-            a: a,
+            a,
         });
         self
     }

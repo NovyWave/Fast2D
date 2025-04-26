@@ -39,21 +39,18 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
             canvas_wrapper.update_objects(|objects| {
                 objects.push(
                     fast2d::Rectangle::new()
-                        .position(50, 50)
-                        .size(200, 150)
-                        .color(50, 0, 100, 1.0) // Keep f32 alpha for shapes? Or align?
+                        .position(50.0, 50.0) // Use f32
+                        .size(200.0, 150.0)   // Use f32
+                        .color(50, 0, 100, 1.0)
                         .into(),
                 );
                 objects.push(
                     fast2d::Text::new()
                         .text("Simple Rectangle")
-                        // Use new builder methods
-                        .position(10, 50)
-                        .size(350, 120) // Use size instead of bounds
-                        .color(255, 255, 255, 0.2) // Use f32 alpha again
-                        .font_size(60) // Use f32 for font size
-                        // Optionally set family if Fira Code isn't the default
-                        // Use fully qualified path
+                        .position(10.0, 50.0) // Use f32
+                        .size(350.0, 120.0)   // Use f32
+                        .color(255, 255, 255, 0.2)
+                        .font_size(60.0)  
                         // .family(fast2d::Family::Name("Fira Code"))
                         .into(),
                 );
@@ -63,34 +60,32 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
         { // Canvas 1: Sine Wave
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
             canvas_wrapper.update_objects(|objects| {
-                // Generate points for a sine wave
-                let mut sine_points = Vec::new();
+                // Generate points for a sine wave - already f32
+                let mut sine_points_tuples = Vec::new(); // Use tuples for builder
                 let amplitude = 50.0;
                 let frequency = 0.02;
                 let y_offset = 150.0;
-                let steps = 100; // Keep as integer for loop
+                let steps = 100;
                 for i in 0..=steps {
-                    let x = (i as f32 / steps as f32) * 350.0; // Map i to x-coordinate (0-350)
+                    let x = (i as f32 / steps as f32) * 350.0;
                     let y = y_offset + amplitude * (x * frequency * 2.0 * PI).sin();
-                    sine_points.push(x);
-                    sine_points.push(y);
+                    sine_points_tuples.push((x, y)); // Push tuple
                 }
 
                 objects.push(
                     fast2d::Line::new()
-                        .points(&sine_points)
+                        .points(&sine_points_tuples) // Pass slice of tuples
                         .color(0, 255, 255, 1.0)
-                        .width(3.0)
+                        .width(3.0) // Already f32
                         .into(),
                 );
                 objects.push(
                     fast2d::Text::new()
                         .text("Sine Wave Example")
-                        .position(10, 10)
-                        .size(300, 50) // Use size instead of bounds
-                        .color(255, 255, 255, 0.8) // Use f32 alpha again
-                        .font_size(20)
-                        // Use fully qualified path
+                        .position(10.0, 10.0) // Use f32
+                        .size(300.0, 50.0)   // Use f32
+                        .color(255, 255, 255, 0.8)
+                        .font_size(20.0)      // Already f32
                         // .family(fast2d::Family::Name("Fira Code"))
                         .into(),
                 );
@@ -100,91 +95,89 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
         { // Canvas 2: Simple Face
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
             canvas_wrapper.update_objects(|objects| {
-                // Removed y_offset variable
-
                 // Head
                 objects.push(
                     fast2d::Circle::new()
-                        .center(175, 205) // 175 + 30
-                        .radius(100)
-                        .color(0, 128, 0, 1.0) // Green color
+                        .center(175.0, 205.0) // Use f32
+                        .radius(100.0)       // Use f32
+                        .color(0, 128, 0, 1.0)
                         .into(),
                 );
                 // Left Eye
                 objects.push(
                     fast2d::Circle::new()
-                        .center(135, 175) // 145 + 30
-                        .radius(15)
-                        .color(255, 255, 255, 1.0) // White
-                        .inner_border(2, 0, 0, 0, 1.0) // Increased border width to 2
+                        .center(135.0, 175.0) // Use f32
+                        .radius(15.0)       // Use f32
+                        .color(255, 255, 255, 1.0)
+                        .border(2.0, 0, 0, 0, 1.0) // Use f32 for width, renamed method
                         .into(),
                 );
                 objects.push( // Pupil
                     fast2d::Circle::new()
-                        .center(135, 175) // 145 + 30
-                        .radius(7)
-                        .color(0, 0, 0, 1.0) // Black
+                        .center(135.0, 175.0) // Use f32
+                        .radius(7.0)        // Use f32
+                        .color(0, 0, 0, 1.0)
                         .into(),
                 );
                  // Right Eye
                  objects.push(
                     fast2d::Circle::new()
-                        .center(215, 175) // 145 + 30
-                        .radius(15)
-                        .color(255, 255, 255, 1.0) // White
-                        .inner_border(2, 0, 0, 0, 1.0) // Increased border width to 2
+                        .center(215.0, 175.0) // Use f32
+                        .radius(15.0)       // Use f32
+                        .color(255, 255, 255, 1.0)
+                        .border(2.0, 0, 0, 0, 1.0) // Use f32 for width, renamed method
                         .into(),
                 );
                 objects.push( // Pupil
                     fast2d::Circle::new()
-                        .center(215, 175) // 145 + 30
-                        .radius(7)
-                        .color(0, 0, 0, 1.0) // Black
+                        .center(215.0, 175.0) // Use f32
+                        .radius(7.0)        // Use f32
+                        .color(0, 0, 0, 1.0)
                         .into(),
                 );
 
                 // Hat
                 objects.push( // Brim
                     fast2d::Rectangle::new()
-                        .position(115, 100) // 70 + 30
-                        .size(120, 20)
-                        .color(0, 0, 0, 0.0) // Transparent fill (Reverted)
-                        .rounded_corners(3, 3, 3, 3)
-                        .inner_border(3, 139, 0, 0, 1.0) // Thick dark red border
+                        .position(115.0, 100.0) // Use f32
+                        .size(120.0, 20.0)    // Use f32
+                        .color(0, 0, 0, 0.0)
+                        .rounded_corners(3.0, 3.0, 3.0, 3.0) // Use f32
+                        .border(3.0, 139, 0, 0, 1.0) // Use f32 for width, renamed method
                         .into(),
                 );
                 objects.push( // Top part
                     fast2d::Rectangle::new()
-                        .position(135, 60) // 30 + 30
-                        .size(80, 45)
-                        .color(0, 0, 0, 0.0) // Transparent fill
-                        .rounded_corners(5, 5, 0, 0)
-                        .inner_border(3, 255, 165, 0, 1.0) // Thick orange border
+                        .position(135.0, 60.0) // Use f32
+                        .size(80.0, 45.0)     // Use f32
+                        .color(0, 0, 0, 0.0)
+                        .rounded_corners(5.0, 5.0, 0.0, 0.0) // Use f32
+                        .border(3.0, 255, 165, 0, 1.0) // Use f32 for width, renamed method
                         .into(),
                 );
 
-                // Mouth (Smile) - Replace Rectangle with Line
+                // Mouth (Smile) - points are already f32
+                let mouth_points = [
+                    (140.0, 245.0),
+                    (155.0, 260.0),
+                    (175.0, 265.0),
+                    (195.0, 260.0),
+                    (210.0, 245.0),
+                ];
                 objects.push(
                     fast2d::Line::new()
-                        .points(&[
-                            140.0, 245.0, // 215.0 + 30.0
-                            155.0, 260.0, // 230.0 + 30.0
-                            175.0, 265.0, // 235.0 + 30.0
-                            195.0, 260.0, // 230.0 + 30.0
-                            210.0, 245.0, // 215.0 + 30.0
-                        ])
-                        .color(0, 0, 0, 1.0) // Black smile line
-                        .width(5.0)
+                        .points(&mouth_points) // Pass slice of tuples
+                        .color(0, 0, 0, 1.0)
+                        .width(5.0) // Already f32
                         .into(),
                 );
                  objects.push(
                     fast2d::Text::new()
                         .text("Face Example")
-                        .position(10, 10)
-                        .size(300, 50) // Use size instead of bounds
-                        .color(255, 255, 255, 0.8) // Use f32 alpha again
-                        .font_size(20)
-                        // Use fully qualified path
+                        .position(10.0, 10.0) // Use f32
+                        .size(300.0, 50.0)   // Use f32
+                        .color(255, 255, 255, 0.8)
+                        .font_size(20.0)      // Already f32
                         // .family(fast2d::Family::Name("Fira Code"))
                         .into(),
                 );

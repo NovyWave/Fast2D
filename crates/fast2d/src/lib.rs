@@ -26,6 +26,9 @@ use glyphon::{
 pub use glyphon::Family;
 // Removed: pub use object_2d::types::FamilyOwned;
 
+// Define MSAA_SAMPLE_COUNT constant here
+const MSAA_SAMPLE_COUNT: u32 = 4; // Multisampling for anti-aliasing
+
 // --- Modify FontSystem static ---
 // Wrap FontSystem in a Mutex to allow mutable access
 static FONT_SYSTEM: OnceLock<Mutex<FontSystem>> = OnceLock::new();
@@ -434,15 +437,16 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
     let mut glyph_buffers: Vec<GlyphonBuffer> = Vec::new();
     for obj in objects {
         if let Object2d::Text(text) = obj {
-            // Access fields directly from the `text` struct reference
-            let text_width_f32 = text.width as f32;
-            let text_height_f32 = text.height as f32;
+            let text_width_f32 = text.width;
+            let text_height_f32 = text.height;
 
-            // Create the Buffer - Pass mutable reference from lock guard
+            // Calculate absolute line height in pixels
+            let line_height_pixels = text.font_size * text.line_height_multiplier;
+
             let mut buffer = GlyphonBuffer::new(
                 &mut font_system,
-                // Access font_size and line_height fields
-                Metrics::new(text.font_size as f32, text.line_height as f32),
+                // Pass calculated absolute line height
+                Metrics::new(text.font_size, line_height_pixels),
             );
 
             // Set buffer size - Pass mutable reference from lock guard
@@ -460,10 +464,10 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
 
             // Get color using named fields and convert to u8
             let glyphon_color = GlyphonColor::rgba(
-                (text.color.r * 255.0) as u8, // Use .r field
-                (text.color.g * 255.0) as u8, // Use .g field
-                (text.color.b * 255.0) as u8, // Use .b field
-                (text.color.a * 255.0) as u8, // Use .a field
+                (text.color.r * 255.0).clamp(0.0, 255.0) as u8, // Use .r field
+                (text.color.g * 255.0).clamp(0.0, 255.0) as u8, // Use .g field
+                (text.color.b * 255.0).clamp(0.0, 255.0) as u8, // Use .b field
+                (text.color.a * 255.0).clamp(0.0, 255.0) as u8, // Use .a field
             );
 
             // Set text on the buffer - Access text field
@@ -487,14 +491,14 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
         if let Object2d::Text(text) = obj {
             // Get color using named fields and convert to u8
             let glyphon_color = GlyphonColor::rgba(
-                (text.color.r * 255.0) as u8, // Use .r field
-                (text.color.g * 255.0) as u8, // Use .g field
-                (text.color.b * 255.0) as u8, // Use .b field
-                (text.color.a * 255.0) as u8, // Use .a field
+                (text.color.r * 255.0).clamp(0.0, 255.0) as u8, // Use .r field
+                (text.color.g * 255.0).clamp(0.0, 255.0) as u8, // Use .g field
+                (text.color.b * 255.0).clamp(0.0, 255.0) as u8, // Use .b field
+                (text.color.a * 255.0).clamp(0.0, 255.0) as u8, // Use .a field
             );
             // Access width and height fields
-            let text_width_f32 = text.width as f32;
-            let text_height_f32 = text.height as f32;
+            let text_width_f32 = text.width;
+            let text_height_f32 = text.height;
 
             // Construct TextArea using a reference to the buffer in the vector
             let text_area = TextArea {
@@ -555,8 +559,8 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                 let mut builder = Path::builder(); // Use imported Path
                 // Use position and size fields
                 let rect_box = Box2D::new(
-                     point(rect.position.x as f32, rect.position.y as f32),
-                     point(rect.position.x as f32 + rect.size.width as f32, rect.position.y as f32 + rect.size.height as f32),
+                     point(rect.position.x, rect.position.y),
+                     point(rect.position.x + rect.size.width, rect.position.y + rect.size.height),
                  );
 
                 // Use border_radii fields
@@ -631,8 +635,8 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                  let mut builder = Path::builder(); // Use imported Path
                  // Use circle.center.x and circle.center.y
                  builder.add_circle(
-                     point(circle.center.x as f32, circle.center.y as f32),
-                     circle.radius as f32,
+                     point(circle.center.x, circle.center.y),
+                     circle.radius,
                      Winding::Positive,
                  );
                  let path = builder.build();

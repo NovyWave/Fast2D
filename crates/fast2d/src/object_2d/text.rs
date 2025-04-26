@@ -8,12 +8,12 @@ pub struct Text {
     pub(crate) text: Cow<'static, str>,
     pub(crate) left: f32,
     pub(crate) top: f32,
-    pub(crate) font_size: u32,
-    pub(crate) line_height: u32,
+    pub(crate) font_size: f32,
+    pub(crate) line_height_multiplier: f32, // Replace line_height with a multiplier
     pub(crate) color: WgpuColor, // Use wgpu::Color
     pub(crate) family: FamilyOwned,
-    pub(crate) width: u32,
-    pub(crate) height: u32,
+    pub(crate) width: f32,
+    pub(crate) height: f32,
 }
 
 impl Default for Text {
@@ -22,13 +22,13 @@ impl Default for Text {
             text: Cow::Borrowed(""),
             left: 0.0,
             top: 0.0,
-            font_size: 16,
-            line_height: 20,
+            font_size: 16.0,
+            line_height_multiplier: 1.0, // Set default multiplier
             // Use wgpu::Color for default
             color: WgpuColor { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }, // Default to white (using f64 for wgpu::Color)
             family: FamilyOwned::SansSerif,
-            width: 100,
-            height: 50,
+            width: f32::MAX,
+            height: f32::MAX,
         }
     }
 }
@@ -43,23 +43,20 @@ impl Text {
         self
     }
 
-    pub fn position(mut self, left: u32, top: u32) -> Self {
-        self.left = left as f32;
-        self.top = top as f32;
+    pub fn position(mut self, left: f32, top: f32) -> Self {
+        self.left = left;
+        self.top = top;
         self
     }
 
-    pub fn font_size(mut self, size: u32) -> Self {
+    pub fn font_size(mut self, size: f32) -> Self {
         self.font_size = size;
-        // Update default line height if it hasn't been explicitly set or is smaller
-        if self.line_height < size {
-            self.line_height = (size as f32 * 1.2) as u32; // Common default ratio
-        }
         self
     }
 
-    pub fn line_height(mut self, height: u32) -> Self {
-        self.line_height = height;
+    // Update line_height method to set the multiplier
+    pub fn line_height(mut self, multiplier: f32) -> Self {
+        self.line_height_multiplier = multiplier.max(0.0); // Ensure non-negative
         self
     }
 
@@ -80,7 +77,7 @@ impl Text {
     }
 
     // Set the size (width and height) of the text area
-    pub fn size(mut self, width: u32, height: u32) -> Self {
+    pub fn size(mut self, width: f32, height: f32) -> Self {
         self.width = width;
         self.height = height;
         self

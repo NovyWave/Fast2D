@@ -1,5 +1,6 @@
 #![allow(unused_imports)] // Allow unused imports in this module definition file
 
+pub mod types;
 pub mod text;
 pub mod rectangle;
 pub mod circle;

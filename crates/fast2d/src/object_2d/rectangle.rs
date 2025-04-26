@@ -1,86 +1,64 @@
-use wgpu::Color as WgpuColor;
-use crate::Object2d; // Import Object2d from the crate root
-use lyon::math::{Point, Size};
-use lyon::path::builder::BorderRadii;
+use super::types::{Position, Size, Color, BorderRadii};
+use crate::Object2d; // Import Object2d enum
 
-#[derive(Debug, Clone)] // Add derive for Debug and Clone
+#[derive(Clone, Debug)]
 pub struct Rectangle {
-    pub position: Point, // Made public for access in draw loop
-    pub size: Size,      // Made public
-    pub color: WgpuColor,// Made public
-    pub border_radii: BorderRadii, // Made public
-    pub border_width: Option<f32>, // Added
-    pub border_color: Option<WgpuColor>, // Added
-    // Add other fields as needed, e.g., border width, border color
+    pub(crate) position: Position, // Uses updated Position (f32)
+    pub(crate) size: Size,         // Uses updated Size (f32)
+    pub(crate) color: Color,
+    pub(crate) border_radii: BorderRadii, // Uses updated BorderRadii (f32)
+    pub(crate) border_width: Option<f32>, // Change to f32
+    pub(crate) border_color: Option<Color>,
 }
 
 impl Rectangle {
     pub fn new() -> Self {
         Self {
-            position: Point::new(0.0, 0.0),
-            size: Size::new(10.0, 10.0), // Default size
-            color: WgpuColor { r: 0.5, g: 0.5, b: 0.5, a: 1.0 }, // Default gray
-            border_radii: BorderRadii::default(), // No rounding by default
-            border_width: None, // Added
-            border_color: None, // Added
+            position: Position::default(),
+            size: Size::default(),
+            color: Color::default(),
+            border_radii: BorderRadii::default(),
+            border_width: None,
+            border_color: None,
         }
     }
 
-    pub fn position(mut self, x: u32, y: u32) -> Self {
-        self.position = Point::new(x as f32, y as f32);
+    pub fn position(mut self, x: f32, y: f32) -> Self { // Accept f32
+        self.position = Position { x, y };
         self
     }
 
-    pub fn size(mut self, width: u32, height: u32) -> Self {
-        self.size = Size::new(width as f32, height as f32);
+    pub fn size(mut self, width: f32, height: f32) -> Self { // Accept f32
+        self.size = Size { width, height };
         self
     }
 
-    pub fn color(mut self, r: u8, g: u8, b: u8, a: f64) -> Self { // Changed a to f64
-        self.color = WgpuColor {
+    pub fn color(mut self, r: u8, g: u8, b: u8, a: f64) -> Self { // Keep f64 for alpha consistency? Or f32?
+        self.color = Color {
             r: r as f64 / 255.0,
             g: g as f64 / 255.0,
             b: b as f64 / 255.0,
-            a: a, // Assign f64 directly
+            a,
         };
         self
     }
 
-    pub fn rounded_corners(mut self, top_left: u32, top_right: u32, bottom_right: u32, bottom_left: u32) -> Self {
-        self.border_radii = BorderRadii {
-            top_left: top_left as f32,
-            top_right: top_right as f32,
-            bottom_left: bottom_left as f32,
-            bottom_right: bottom_right as f32,
-        };
+    pub fn rounded_corners(mut self, top_left: f32, top_right: f32, bottom_left: f32, bottom_right: f32) -> Self { // Accept f32
+        self.border_radii = BorderRadii { top_left, top_right, bottom_left, bottom_right };
         self
     }
 
-    // New border method
-    pub fn border(mut self, width: u32, r: u8, g: u8, b: u8, a: f64) -> Self {
-        self.border_width = Some(width as f32);
-        self.border_color = Some(WgpuColor {
+    // Renamed from inner_border for clarity
+    pub fn border(mut self, width: f32, r: u8, g: u8, b: u8, a: f64) -> Self { // Accept f32 for width
+        self.border_width = Some(width);
+        self.border_color = Some(Color {
             r: r as f64 / 255.0,
             g: g as f64 / 255.0,
             b: b as f64 / 255.0,
-            a: a,
+            a,
         });
         self
     }
-
-    // Renamed back to inner_border
-    pub fn inner_border(mut self, width: u32, r: u8, g: u8, b: u8, a: f64) -> Self {
-        self.border_width = Some(width as f32);
-        self.border_color = Some(WgpuColor {
-            r: r as f64 / 255.0,
-            g: g as f64 / 255.0,
-            b: b as f64 / 255.0,
-            a: a,
-        });
-        self
-    }
-
-    // Add other builder methods as needed
 }
 
 impl Default for Rectangle {

@@ -1,36 +1,31 @@
 use lyon::math::Point;
 use wgpu::Color as WgpuColor;
 use crate::Object2d;
+use super::types::{Position, Color};
 
 #[derive(Debug, Clone)]
 pub struct Line {
-    pub(crate) points: Vec<Point>,
-    pub(crate) color: WgpuColor,
-    pub(crate) width: f32, // Renamed from thickness
+    pub(crate) points: Vec<Position>,
+    pub(crate) color: Color,
+    pub(crate) width: f32,
 }
 
 impl Line {
     pub fn new() -> Self {
         Self {
             points: Vec::new(),
-            color: WgpuColor { r: 1.0, g: 1.0, b: 1.0, a: 1.0 }, // Default white
-            width: 1.0, // Renamed from thickness, default 1 pixel wide
+            color: Color::default(),
+            width: 1.0,
         }
     }
 
-    /// Sets the points defining the line segments.
-    /// Expects points in the format [x1, y1, x2, y2, x3, y3, ...].
-    pub fn points(mut self, points: &[f32]) -> Self {
-        self.points = points
-            .chunks_exact(2)
-            .map(|chunk| Point::new(chunk[0], chunk[1]))
-            .collect();
+    pub fn points(mut self, points_data: &[(f32, f32)]) -> Self {
+        self.points = points_data.iter().map(|(x, y)| Position { x: *x, y: *y }).collect();
         self
     }
 
-    /// Sets the color of the line (RGBA).
     pub fn color(mut self, r: u8, g: u8, b: u8, a: f64) -> Self {
-        self.color = WgpuColor {
+        self.color = Color {
             r: r as f64 / 255.0,
             g: g as f64 / 255.0,
             b: b as f64 / 255.0,
@@ -39,9 +34,8 @@ impl Line {
         self
     }
 
-    /// Sets the width of the line.
-    pub fn width(mut self, width: f32) -> Self { // Renamed from thickness
-        self.width = width.max(0.1); // Use width field, ensure minimum width
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
         self
     }
 }
