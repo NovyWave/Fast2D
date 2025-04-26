@@ -1,14 +1,38 @@
-use zoon::*;
+use zoon::{eprintln, *};
+// Remove the direct import of Family
+// use fast2d::Family;
 
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
-use std::f32::consts::PI; // Import PI for sine wave
+use std::f32::consts::PI;
+
+// --- Load font data directly ---
+// No need for separate consts if only one font is used initially
+// const FIRA_CODE_REGULAR_DATA: &[u8] = include_bytes!("../fonts/FiraCode-Regular.ttf");
 
 pub fn main() {
+    // --- Prepare font data for initialization ---
+    let font_data_to_register: Vec<&'static [u8]> = vec![
+        // Pass the raw font data bytes, casting to a slice reference
+        include_bytes!("../fonts/FiraCode-Regular.ttf"),
+        // Add more font data slices here if needed, casting them similarly
+    ];
+
+    // --- Initialize Fast2D with the font system ---
+    if let Err(e) = fast2d::init_font_system(font_data_to_register) {
+        eprintln!("Failed to initialize Fast2D Font System: {:?}", e);
+        // Add specific error handling if needed
+        match e {
+            fast2d::FontSystemInitError::AlreadyInitialized => eprintln!("Warning: FontSystem already initialized."),
+            fast2d::FontSystemInitError::NoFontsProvided => panic!("No font data provided to init_font_system."),
+            fast2d::FontSystemInitError::DatabaseError(err) => panic!("Error loading font data: {}", err), // Adjust if error type changes
+        }
+    }
+
     start_app("app", root);
 }
 
-fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
+fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
     [
         { // Canvas 0: Simple Rectangle
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
@@ -16,18 +40,21 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                 objects.push(
                     fast2d::Rectangle::new()
                         .position(50, 50)
-                        .size(200, 150) // Increased size to overlap text
-                        .color(50, 0, 100, 1.0) // Blue
+                        .size(200, 150)
+                        .color(50, 0, 100, 1.0) // Keep f32 alpha for shapes? Or align?
                         .into(),
                 );
                 objects.push(
                     fast2d::Text::new()
                         .text("Simple Rectangle")
-                        .font_size(60) // Made font size much larger
-                        .line_height(60) // Adjusted line height
-                        .color(255, 255, 255, 0.2)
-                        .position(10, 50) // Use new position
-                        .size(350, 120) // Use new size instead of bounds
+                        // Use new builder methods
+                        .position(10, 50)
+                        .size(350, 120) // Use size instead of bounds
+                        .color(255, 255, 255, 0.2) // Use f32 alpha again
+                        .font_size(60) // Use f32 for font size
+                        // Optionally set family if Fira Code isn't the default
+                        // Use fully qualified path
+                        // .family(fast2d::Family::Name("Fira Code"))
                         .into(),
                 );
             });
@@ -52,17 +79,19 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                 objects.push(
                     fast2d::Line::new()
                         .points(&sine_points)
-                        .color(0, 255, 255, 1.0) // Cyan color
+                        .color(0, 255, 255, 1.0)
                         .width(3.0)
                         .into(),
                 );
                 objects.push(
                     fast2d::Text::new()
                         .text("Sine Wave Example")
-                        .font_size(20) // Integer
-                        .color(255, 255, 255, 0.8)
-                        .position(10, 10) // Use new position
-                        .size(300, 50) // Use new size instead of bounds
+                        .position(10, 10)
+                        .size(300, 50) // Use size instead of bounds
+                        .color(255, 255, 255, 0.8) // Use f32 alpha again
+                        .font_size(20)
+                        // Use fully qualified path
+                        // .family(fast2d::Family::Name("Fira Code"))
                         .into(),
                 );
             });
@@ -151,10 +180,12 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] { // Changed size to 3
                  objects.push(
                     fast2d::Text::new()
                         .text("Face Example")
+                        .position(10, 10)
+                        .size(300, 50) // Use size instead of bounds
+                        .color(255, 255, 255, 0.8) // Use f32 alpha again
                         .font_size(20)
-                        .color(255, 255, 255, 0.8)
-                        .position(10, 10) // Use new position
-                        .size(300, 50) // Use new size instead of bounds
+                        // Use fully qualified path
+                        // .family(fast2d::Family::Name("Fira Code"))
                         .into(),
                 );
             });

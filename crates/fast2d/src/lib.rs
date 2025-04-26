@@ -1,14 +1,6 @@
 use web_sys::{HtmlCanvasElement, wasm_bindgen::UnwrapThrowExt};
 
-use std::sync::Arc;
 use std::borrow::Cow;
-
-// Import glyphon types
-use glyphon::{
-    fontdb, Cache, FontSystem, Shaping, Buffer as GlyphonBuffer,
-    SwashCache, TextAtlas, TextRenderer, Viewport, TextArea,
-    Attrs, Color as GlyphonColor, Family, TextBounds, Resolution, FamilyOwned, Metrics // Removed CacheKeyFlags
-};
 
 // Import lyon types
 use lyon::math::point;
@@ -21,15 +13,61 @@ use lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex
 use wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, BindGroupLayout, BindGroup, Buffer as WgpuBuffer};
 use wgpu::util::DeviceExt;
 
+use std::sync::{OnceLock, Mutex}; // Import Mutex
+
+// Import glyphon types
+use glyphon::{
+    Cache, FontSystem, Shaping, Buffer as GlyphonBuffer,
+    SwashCache, TextAtlas, TextRenderer, Viewport, TextArea,
+    Attrs, Color as GlyphonColor, TextBounds, Resolution, FamilyOwned, Metrics // Removed CacheKeyFlags
+};
+
+// Re-export Family to avoid direct dependency on glyphon in client code
+pub use glyphon::Family;
+// Removed: pub use object_2d::types::FamilyOwned;
+
+// --- Modify FontSystem static ---
+// Wrap FontSystem in a Mutex to allow mutable access
+static FONT_SYSTEM: OnceLock<Mutex<FontSystem>> = OnceLock::new();
+
+#[derive(Debug)]
+pub enum FontSystemInitError {
+    DatabaseError(String), // Error loading fonts into the database
+    AlreadyInitialized,
+    NoFontsProvided,
+}
+
+/// Initializes the cosmic-text FontSystem with provided font data.
+/// Must be called once before text rendering.
+pub fn init_font_system(font_data: Vec<&'static [u8]>) -> Result<(), FontSystemInitError> {
+    if font_data.is_empty() {
+        return Err(FontSystemInitError::NoFontsProvided);
+    }
+
+    // Create a FontSystem (adjust locale/db as needed)
+    let mut font_system = FontSystem::new();
+    let db = font_system.db_mut();
+    for data in font_data {
+        // Loading might return errors, collect them or handle appropriately
+        db.load_font_data(data.to_vec()); // Consider error handling here
+    }
+    // You might want more robust error checking on font loading
+
+    // Wrap the initialized font_system in a Mutex before setting
+    FONT_SYSTEM.set(Mutex::new(font_system))
+        .map_err(|_| FontSystemInitError::AlreadyInitialized)
+}
+
+// --- Remove Internal helper to get FontSystem ---
+// fn get_font_system() -> &'static FontSystem { ... }
+// Access will now be done via FONT_SYSTEM.get().unwrap().lock().unwrap() within draw
+
 // Declare the object_2d module and re-export structs
 mod object_2d;
 pub use object_2d::text::Text;
 pub use object_2d::rectangle::Rectangle;
 pub use object_2d::circle::Circle;
 pub use object_2d::line::Line;
-// Removed: pub use object_2d::types::FamilyOwned;
-
-const MSAA_SAMPLE_COUNT: u32 = 4; // Multisampling for anti-aliasing
 
 // Define the uniform structure (must match WGSL and be 16-byte aligned)
 #[repr(C)]
@@ -272,10 +310,9 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
     });
 
     // --- Text Rendering Setup ---
-    let font_system = {
-        let font_data = include_bytes!("../fonts/FiraCode-Regular.ttf");
-        FontSystem::new_with_fonts([fontdb::Source::Binary(Arc::new(font_data))])
-    };
+    // Remove font_system retrieval here; it will be accessed in draw()
+    // let font_system = get_font_system();
+
     let swash_cache = SwashCache::new();
     let cache = Cache::new(&device);
     // Create Viewport using ::new
@@ -351,7 +388,8 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         surface_config,
         msaa_texture,
 
-        font_system,
+        // Remove font_system field
+        // font_system,
         swash_cache,
         viewport,
         atlas,
@@ -386,77 +424,86 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
 
 
     // --- Text Preparation ---
+    // Acquire mutable lock on the global FontSystem
+    let mut font_system = FONT_SYSTEM.get()
+        .expect("FontSystem not initialized")
+        .lock()
+        .expect("Failed to lock FontSystem Mutex");
+
     // Stage 1: Create and store all owned buffers
     let mut glyph_buffers: Vec<GlyphonBuffer> = Vec::new();
     for obj in objects {
         if let Object2d::Text(text) = obj {
-            // Cast width/height for bounds calculation
+            // Access fields directly from the `text` struct reference
             let text_width_f32 = text.width as f32;
             let text_height_f32 = text.height as f32;
 
-            // Create the Buffer
+            // Create the Buffer - Pass mutable reference from lock guard
             let mut buffer = GlyphonBuffer::new(
-                &mut gfx.font_system,
+                &mut font_system,
+                // Access font_size and line_height fields
                 Metrics::new(text.font_size as f32, text.line_height as f32),
             );
 
-            // Set buffer size
+            // Set buffer size - Pass mutable reference from lock guard
             buffer.set_size(
-                &mut gfx.font_system,
+                &mut font_system,
                 Some(text_width_f32),
                 Some(text_height_f32),
             );
 
-            // Match on FamilyOwned
+            // Match on FamilyOwned - Access family field
             let family_name = match &text.family {
                 FamilyOwned::Name(name) => Family::Name(name.as_str()),
                 _ => Family::SansSerif,
             };
 
-            // Get color here as it's needed for set_text
+            // Get color using named fields and convert to u8
             let glyphon_color = GlyphonColor::rgba(
-                (text.color.r * 255.0) as u8,
-                (text.color.g * 255.0) as u8,
-                (text.color.b * 255.0) as u8,
-                (text.color.a * 255.0) as u8,
+                (text.color.r * 255.0) as u8, // Use .r field
+                (text.color.g * 255.0) as u8, // Use .g field
+                (text.color.b * 255.0) as u8, // Use .b field
+                (text.color.a * 255.0) as u8, // Use .a field
             );
 
-            // Set text on the buffer
+            // Set text on the buffer - Access text field
             buffer.set_text(
-                &mut gfx.font_system,
-                &text.text,
+                &mut font_system,
+                &text.text, // Access text field
                 &Attrs::new()
                     .family(family_name)
                     .color(glyphon_color),
                 Shaping::Advanced,
             );
 
-            // Push the owned buffer into the vector
             glyph_buffers.push(buffer);
         }
     }
 
     // Stage 2: Create TextAreas borrowing from the owned buffers
     let mut text_areas: Vec<TextArea> = Vec::new();
-    let mut buffer_idx = 0; // Index for glyph_buffers
+    let mut buffer_idx = 0;
     for obj in objects {
         if let Object2d::Text(text) = obj {
-            // Recalculate color and dimensions needed for TextArea fields
+            // Get color using named fields and convert to u8
             let glyphon_color = GlyphonColor::rgba(
-                (text.color.r * 255.0) as u8,
-                (text.color.g * 255.0) as u8,
-                (text.color.b * 255.0) as u8,
-                (text.color.a * 255.0) as u8,
+                (text.color.r * 255.0) as u8, // Use .r field
+                (text.color.g * 255.0) as u8, // Use .g field
+                (text.color.b * 255.0) as u8, // Use .b field
+                (text.color.a * 255.0) as u8, // Use .a field
             );
+            // Access width and height fields
             let text_width_f32 = text.width as f32;
             let text_height_f32 = text.height as f32;
 
             // Construct TextArea using a reference to the buffer in the vector
             let text_area = TextArea {
-                buffer: &glyph_buffers[buffer_idx], // Borrow the buffer using the index
+                buffer: &glyph_buffers[buffer_idx],
+                // Access left and top fields
                 left: text.left,
                 top: text.top,
                 bounds: TextBounds {
+                     // Access left and top fields
                      left: text.left as i32,
                      top: text.top as i32,
                      right: (text.left + text_width_f32) as i32,
@@ -467,15 +514,15 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
                 custom_glyphs: &[],
             };
             text_areas.push(text_area);
-            buffer_idx += 1; // Increment index for the next text object
+            buffer_idx += 1;
         }
     }
 
-    // Prepare text renderer using TextAreas
+    // Prepare text renderer using TextAreas - Pass mutable reference from lock guard
     match gfx.text_renderer.prepare(
         &gfx.device,
         &gfx.queue,
-        &mut gfx.font_system,
+        &mut font_system, // Pass mutable reference
         &mut gfx.atlas,
         &gfx.viewport,
         text_areas.into_iter(), // Pass owned TextAreas
@@ -486,6 +533,7 @@ fn draw(gfx: &mut Graphics, objects: &[Object2d]) {
             eprintln!("Error preparing text renderer: {:?}", e);
         }
     }
+    // MutexGuard `font_system` is dropped here, releasing the lock
 
     // --- Shape Tessellation ---
     let mut buffers: VertexBuffers<ColoredVertex, u32> = VertexBuffers::new();
@@ -752,7 +800,8 @@ struct Graphics {
     surface_config: SurfaceConfiguration,
     msaa_texture: Texture,
 
-    font_system: FontSystem,
+    // Remove font_system field
+    // font_system: &'static FontSystem,
     swash_cache: SwashCache,
     viewport: glyphon::Viewport,
     atlas: glyphon::TextAtlas,
