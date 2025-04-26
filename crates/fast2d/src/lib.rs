@@ -1,3 +1,21 @@
+// --- Compile-time checks for mutually exclusive features ---
+
+// Error if multiple rendering backends are selected
+#[cfg(all(feature = "webgl", feature = "webgpu"))]
+compile_error!("Feature 'webgl' and 'webgpu' cannot be enabled at the same time. Please choose one rendering backend.");
+
+#[cfg(all(feature = "webgl", feature = "canvas"))]
+compile_error!("Feature 'webgl' and 'canvas' cannot be enabled at the same time. Please choose one rendering backend.");
+
+#[cfg(all(feature = "webgpu", feature = "canvas"))]
+compile_error!("Feature 'webgpu' and 'canvas' cannot be enabled at the same time. Please choose one rendering backend.");
+
+// Error if no rendering backend is selected
+#[cfg(not(any(feature = "webgl", feature = "webgpu", feature = "canvas")))]
+compile_error!("One rendering backend feature ('webgl', 'webgpu', or 'canvas') must be enabled.");
+
+// --- End of compile-time checks ---
+
 use web_sys::{HtmlCanvasElement, wasm_bindgen::UnwrapThrowExt};
 
 use std::borrow::Cow;
@@ -822,3 +840,63 @@ struct Graphics {
 
 // Create a shaders directory and the rectangle shader file
 // src/shaders/rectangle.wgsl
+
+// Example function demonstrating conditional backend logic
+pub fn initialize_renderer() {
+    #[cfg(feature = "canvas")]
+    {
+        // --- Canvas Backend Initialization ---
+        println!("Initializing Fast2D with Canvas backend.");
+        // Get canvas element, get 2D context using web-sys
+        // Store context for drawing operations
+        // ... canvas-specific setup ...
+
+        // Example using web-sys (ensure web-sys is imported)
+        /*
+        use web_sys::{HtmlCanvasElement, CanvasRenderingContext2d};
+        let window = web_sys::window().expect("no global `window` exists");
+        let document = window.document().expect("should have a document on window");
+        let canvas = document.get_element_by_id("fast2d-canvas") // Assuming a canvas with this ID exists
+            .expect("should have canvas element")
+            .dyn_into::<HtmlCanvasElement>()
+            .map_err(|_| ())
+            .expect("element should be a HtmlCanvasElement");
+
+        let context = canvas
+            .get_context("2d")
+            .unwrap()
+            .unwrap()
+            .dyn_into::<CanvasRenderingContext2d>()
+            .unwrap();
+
+        context.set_fill_style(&"blue".into());
+        context.fill_rect(10.0, 10.0, 100.0, 100.0);
+        */
+    }
+
+    #[cfg(not(feature = "canvas"))]
+    {
+        // --- WGPU/WebGL Backend Initialization ---
+        println!("Initializing Fast2D with WGPU/WebGL backend.");
+        // Initialize wgpu, create surface, adapter, device, queue
+        // ... wgpu-specific setup ...
+    }
+}
+
+pub fn draw_frame() {
+    #[cfg(feature = "canvas")]
+    {
+        // --- Canvas Drawing Logic ---
+        // Use the stored CanvasRenderingContext2d to draw shapes, images, etc.
+        // ... canvas drawing commands ...
+    }
+
+    #[cfg(not(feature = "canvas"))]
+    {
+        // --- WGPU/WebGL Drawing Logic ---
+        // Create command encoder, render pass, set pipelines, draw calls, submit queue
+        // ... wgpu drawing commands ...
+    }
+}
+
+// ... rest of the library code ...

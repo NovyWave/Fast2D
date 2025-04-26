@@ -13,13 +13,40 @@ readme = "../../README.md"
 wasm-bindgen-test = "0.3.19"
 
 [dependencies]
-wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false }
-glyphon = { version = "0.9.0", default-features = false }
-lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", default-features = false }
-bytemuck = { version = "*", features = ["derive"], default-features = false }
-euclid = { version = "*", features = ["bytemuck"], default-features = false }
-web-sys = { version = "0.3", features = ["HtmlCanvasElement"], default-features = false }
+wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false, optional = true }
+glyphon = { version = "0.9.0", default-features = false, optional = true }
+lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", default-features = false, optional = true }
+bytemuck = { version = "*", features = ["derive"], default-features = false, optional = true }
+euclid = { version = "*", features = ["bytemuck"], default-features = false, optional = true }
+web-sys = { version = "0.3", optional = true, default-features = false }
 
 [features]
-webgl = ["wgpu/webgl"]
-webgpu = ["wgpu/webgpu"]
+default = []
+webgl = [
+    "dep:wgpu",
+    "wgpu/webgl",
+    "dep:glyphon",
+    "dep:lyon",
+    "dep:bytemuck",
+    "dep:euclid",
+    "dep:web-sys",
+    "web-sys/HtmlCanvasElement",
+]
+webgpu = [
+    "dep:wgpu",
+    "wgpu/webgpu",
+    "dep:glyphon",
+    "dep:lyon",
+    "dep:bytemuck",
+    "dep:euclid",
+    "dep:web-sys",
+    "web-sys/HtmlCanvasElement",
+]
+canvas = [
+    "dep:web-sys",
+    "web-sys/CanvasRenderingContext2d",
+    "web-sys/Document",
+    "web-sys/Element",
+    "web-sys/HtmlCanvasElement",
+    "web-sys/Window",
+]
