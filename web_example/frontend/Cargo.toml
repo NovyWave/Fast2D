@@ -8,4 +8,4 @@ publish.workspace = true
 zoon.workspace = true
 # @TODO replace `webgl` with `webgpu` once all relevant browsers and WebViews support WebGPU 
 # Related: https://github.com/gfx-rs/wgpu/issues/1464
-fast2d = { path = "../../crates/fast2d", features = ["webgpu"] }
+fast2d = { path = "../../crates/fast2d", features = ["webgl"] }
