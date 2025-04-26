@@ -1,4 +1,5 @@
-use fast2d::zoon::*;
+use zoon::*;
+
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::f32::consts::PI; // Import PI for sine wave

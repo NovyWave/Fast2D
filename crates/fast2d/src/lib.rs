@@ -1,7 +1,4 @@
-pub use zoon;
-
-use zoon::wasm_bindgen::{throw_str, UnwrapThrowExt};
-use zoon::web_sys::HtmlCanvasElement;
+use web_sys::{HtmlCanvasElement, wasm_bindgen::UnwrapThrowExt};
 
 use std::sync::Arc;
 use std::borrow::Cow;
@@ -170,7 +167,7 @@ async fn create_graphics(canvas: HtmlCanvasElement) -> Graphics {
     let instance = wgpu::Instance::default();
     let surface = instance
         .create_surface(SurfaceTarget::Canvas(canvas))
-        .unwrap_or_else(|e| throw_str(&format!("{e:#?}")));
+        .unwrap_throw();
 
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {

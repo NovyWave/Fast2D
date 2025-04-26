@@ -5,4 +5,5 @@ edition.workspace = true
 publish.workspace = true
 
 [dependencies]
+zoon.workspace = true
 fast2d = { path = "../../crates/fast2d" }

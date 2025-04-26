@@ -6,22 +6,19 @@ repository = "https://github.com/FastWaveViewer/Fast2D"
 authors = ["Martin Kavík <martin@kavik.cz>"]
 description = "Draw shapes and text using Canvas Web API or wgpu"
 categories = ["Graphics"]
-license = "UPL-1.0"
-readme = "../README.md"
+license = "MIT"
+readme = "../../README.md"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.19"
 
 [dependencies]
-# zoon = { path = "../../../MoonZoon/crates/zoon" }
-zoon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "507832338c442ee5e7d19b1aa4fc49d7034d5ed0" }
-
 wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false }
 glyphon = "0.9.0"
-lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", features = ["extra"] }
+lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4" }
 bytemuck = { version = "*", features = ["derive"] }
 euclid = { version = "*", features = ["bytemuck"] }
-smol_str = "*"
+web-sys = { version = "0.3", features = ["HtmlCanvasElement"] }
 
 [features]
 # @TODO replace `webgl` with `webgpu` once all relevant browsers and WebViews support WebGPU 
