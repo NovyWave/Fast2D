@@ -308,6 +308,10 @@ impl CanvasWrapper {
     // Suppress unused variable warnings only when 'canvas' feature is active
     #[cfg_attr(feature = "canvas", allow(unused_variables))]
     pub fn resized(&mut self, width: u32, height: u32) {
+        if let Some(canvas) = &self.canvas_element {
+            canvas.set_width(width);
+            canvas.set_height(height);
+        }
         cfg_if! {
             if #[cfg(feature = "canvas")] {
                 // For canvas, resizing the element externally is enough.

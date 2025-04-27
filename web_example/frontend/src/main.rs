@@ -1,18 +1,5 @@
 use zoon::{*, futures_util::future::try_join_all};
-
-use std::rc::Rc;
-use std::cell::{Cell, RefCell};
 use std::f32::consts::PI;
-
-async fn load_and_register_fonts() {
-    let fonts = try_join_all([
-        fast2d::fetch_file(&public_url!("/fonts/FiraCode-Regular.ttf")),
-        fast2d::fetch_file(&public_url!("/fonts/Inter-Regular.ttf")),
-        fast2d::fetch_file(&public_url!("/fonts/Inter-Bold.ttf")),
-        fast2d::fetch_file(&public_url!("/fonts/Inter-BoldItalic.ttf")),
-    ]).await.unwrap_throw();
-    fast2d::register_fonts(&fonts).unwrap_throw();
-}
 
 pub fn main() {
     Task::start(async {
@@ -21,7 +8,17 @@ pub fn main() {
     });
 }
 
-fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
+async fn load_and_register_fonts() {
+    let fonts = try_join_all([
+        fast2d::fetch_file("/_api/public/fonts/FiraCode-Regular.ttf"),
+        fast2d::fetch_file("/_api/public/fonts/Inter-Regular.ttf"),
+        fast2d::fetch_file("/_api/public/fonts/Inter-Bold.ttf"),
+        fast2d::fetch_file("/_api/public/fonts/Inter-BoldItalic.ttf"),
+    ]).await.unwrap_throw();
+    fast2d::register_fonts(&fonts).unwrap_throw();
+}
+
+fn examples() -> [fast2d::CanvasWrapper; 3] {
     [
         { // Canvas 1: Simple Rectangle
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
@@ -33,7 +30,6 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .color(50, 0, 100, 1.0)
                         .into(),
                 );
-
                 objects.push(
                     fast2d::Text::new()
                         .text("Simple Rectangle")
@@ -90,7 +86,6 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .color(0, 0, 0, 1.0)
                         .into(),
                 );
-
                 // Hat
                 objects.push( // Brim
                     fast2d::Rectangle::new()
@@ -110,7 +105,6 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .border(3.0, 255, 165, 0, 1.0) // Use f32 for width, renamed method
                         .into(),
                 );
-
                 // Mouth (Smile) - points are already f32
                 let mouth_points = [
                     (140.0, 245.0),
@@ -177,7 +171,6 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                     let y = y_offset + amplitude * (x * frequency * 2.0 * PI).sin();
                     sine_points_tuples.push((x, y)); // Push tuple
                 }
-
                 objects.push(
                     fast2d::Line::new()
                         .points(&sine_points_tuples) // Pass slice of tuples
@@ -212,59 +205,30 @@ fn root() -> impl Element {
                 .s(Gap::both(10)) // Add gap between panels
                 .s(Scrollbars::both())
                 .s(Padding::all(10))
-                .items(canvas_wrappers().map(panel_with_canvas))
+                .items(examples().map(panel_with_canvas))
         )
 }
 
-fn panel_with_canvas(canvas_wrapper: fast2d::CanvasWrapper) -> impl Element {
-    let canvas_wrapper = Rc::new(RefCell::new(canvas_wrapper));
-    let pending_resized = Rc::new(Cell::new(None::<(u32, u32)>));
-    // Store the canvas element itself to update its attributes
-    let canvas_element_store = Rc::new(RefCell::new(None::<web_sys::HtmlCanvasElement>));
-
+fn panel_with_canvas(example: fast2d::CanvasWrapper) -> impl Element {
     El::new()
         .s(Align::center())
         .s(Clip::both())
         .s(Borders::all(Border::new().color(color!("Gray"))))
         .s(Width::fill().max(650)) // Example max width
         .s(Height::exact(350)) // Example max height
-        .on_viewport_size_change(clone!((canvas_wrapper, pending_resized, canvas_element_store) move |width, height| {
-            // Update the canvas element's attributes
-            if let Some(canvas_el) = canvas_element_store.borrow().as_ref() {
-                canvas_el.set_width(width);
-                canvas_el.set_height(height);
-            }
-            // Notify fast2d about the resize
-            if let Ok(mut canvas_wrapper) = canvas_wrapper.try_borrow_mut() {
-                canvas_wrapper.resized(width, height);
-            } else {
-                // Store non-zero dimensions if borrow fails
-                pending_resized.set(Some((width, height)));
-            }
-        }))
-        .child(
-            Canvas::new()
-                .width(0)
-                .height(0)
-                .s(Width::fill()) // Style will override layout width
-                .s(Height::fill()) // Added fill height style
-                .after_insert(clone!((canvas_element_store, canvas_wrapper, pending_resized) move |canvas| {
-                    // Store the HtmlCanvasElement
-                    *canvas_element_store.borrow_mut() = Some(canvas.clone());
+        .child_signal(canvas_with_example(example).into_signal_option())
+}
 
-                    Task::start(async move {
-                        canvas_wrapper.borrow_mut().set_canvas(canvas).await; // Pass the stored element
-
-                        // Apply pending resize if necessary
-                        if let Some((width, height)) = pending_resized.take() {
-                            // Ensure element attributes are updated if resize happened before after_insert finished
-                            if let Some(canvas_el) = canvas_element_store.borrow().as_ref() {
-                                canvas_el.set_width(width);
-                                canvas_el.set_height(height);
-                            }
-                            canvas_wrapper.borrow_mut().resized(width, height);
-                        }
-                    });
-                }))
-        )
+async fn canvas_with_example(mut example: fast2d::CanvasWrapper) -> impl Element {
+    let mut zoon_canvas = Canvas::new()
+        .width(0)
+        .height(0)
+        .s(Width::fill())
+        .s(Height::fill());
+    example.set_canvas(zoon_canvas.raw_el_mut().dom_element()).await; 
+    zoon_canvas.update_raw_el(move |raw_el| {
+        raw_el.on_resize(move |width, height| {
+            example.resized(width, height);
+        })
+    })
 }
