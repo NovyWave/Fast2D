@@ -9,7 +9,13 @@ pub fn main() {
         let font_url = "/_api/public/fonts/FiraCode-Regular.ttf";
         let font_bytes = fast2d::fetch_file(font_url).await.expect("fetch_file failed");
 
-        if let Err(error) = fast2d::register_fonts(&[font_bytes.as_slice()]) {
+        let font_url_2 = "/_api/public/fonts/Inter-Regular.ttf";
+        let font_bytes_2 = fast2d::fetch_file(font_url_2).await.expect("fetch_file failed");
+
+        let font_url_3 = "/_api/public/fonts/Inter-Bold.ttf";
+        let font_bytes_3 = fast2d::fetch_file(font_url_3).await.expect("fetch_file failed");
+
+        if let Err(error) = fast2d::register_fonts(&[font_bytes.as_slice(), font_bytes_2.as_slice(), font_bytes_3.as_slice()]) {
             eprintln!("Failed to register font with fast2d: {error:?}");
         }
         start_app("app", root);
@@ -70,8 +76,8 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .position(10.0, 10.0) // Use f32
                         .size(300.0, 50.0)   // Use f32
                         .color(255, 255, 255, 0.8)
-                        .font_size(20.0)      // Already f32
-                        .family(fast2d::Family::name("Fira Code"))
+                        .font_size(20.0)  
+                        .family(fast2d::Family::name("Fira Code"))    // Already f32
                         .into(),
                 );
             });
@@ -156,14 +162,24 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .width(5.0) // Already f32
                         .into(),
                 );
-                 objects.push(
+                objects.push(
                     fast2d::Text::new()
                         .text("Face Example")
                         .position(10.0, 10.0) // Use f32
+                        .size(150.0, 50.0)   // Use f32
+                        .color(255, 255, 255, 0.8)
+                        .font_size(20.0)      // Already f32
+                        .family(fast2d::Family::name("Inter"))
+                        .into(),
+                );
+                objects.push(
+                    fast2d::Text::new()
+                        .text("With a hat")
+                        .position(180.0, 10.0) // Use f32
                         .size(300.0, 50.0)   // Use f32
                         .color(255, 255, 255, 0.8)
                         .font_size(20.0)      // Already f32
-                        .family(fast2d::Family::name("Arial"))
+                        .family(fast2d::Family::name("Inter"))
                         .into(),
                 );
             });
