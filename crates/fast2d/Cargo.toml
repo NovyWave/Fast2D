@@ -58,5 +58,6 @@ canvas = [
     "web-sys/TextMetrics",
     "web-sys/FontFace",
     "web-sys/FontFaceSet",
+    "web-sys/FontFaceDescriptors",
     "dep:ttf-parser",
 ]
