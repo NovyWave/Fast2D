@@ -68,20 +68,17 @@ pub enum FontSystemInitError {
 /// Registers font data for use in Fast2D text rendering (WebGL/WebGPU only).
 /// This should be called before any text rendering, and before creating canvases.
 /// On backends that do not require explicit font registration, this function is not available.
-pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), FontSystemInitError> {
+pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), FontSystemInitError> {
     if fonts.is_empty() {
         return Err(FontSystemInitError::NoFontsProvided);
     }
-    let font_vec: Vec<Vec<u8>> = fonts.iter().map(|f| f.to_vec()).collect();
     let mut font_system = FontSystem::new();
     let db = font_system.db_mut();
-    for data in font_vec {
-        db.load_font_data(data);
+    for data in fonts {
+        db.load_font_data(data.clone());
     }
     // Validate that a default font is available
-    // Remove db.default_family().is_none() check, only check if any face is loaded
     if db.faces().next().is_none() {
-        // Show a warning in the browser console if no valid font is loaded
         #[cfg(target_arch = "wasm32")]
         web_sys::console::warn_1(&JsValue::from_str(
             "Warning: No valid font loaded. The chosen font may not be available."
@@ -96,14 +93,13 @@ pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), FontSystemInitError> {
 }
 
 #[cfg(feature = "canvas")]
-pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), String> {
+pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), String> {
     use web_sys::{window, FontFace};
     use ttf_parser::Face;
     let win = window().ok_or("No window")?;
     let doc = win.document().ok_or("No document")?;
     let fonts_set = doc.fonts();
     for font_bytes in fonts {
-        // Try to extract the family name from the font metadata
         let family = Face::parse(font_bytes, 0)
             .ok()
             .and_then(|face| {
@@ -122,7 +118,7 @@ pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), String> {
                 console::warn_1(&JsValue::from_str("Warning: Could not extract font family name from font data. Using 'CustomFont'."));
                 "CustomFont".to_string()
             });
-        let buffer = web_sys::js_sys::Uint8Array::from(*font_bytes);
+        let buffer = web_sys::js_sys::Uint8Array::from(font_bytes.as_slice());
         let array_buffer = buffer.buffer();
         let font_face = FontFace::new_with_array_buffer(&family, &array_buffer)
             .map_err(|e| format!("FontFace error: {:?}", e))?;

@@ -1,33 +1,29 @@
-use zoon::{eprintln, *};
+use zoon::{*, futures_util::future::try_join_all};
 
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::f32::consts::PI;
 
+async fn load_and_register_fonts() {
+    let fonts = try_join_all([
+        fast2d::fetch_file(&public_url!("/fonts/FiraCode-Regular.ttf")),
+        fast2d::fetch_file(&public_url!("/fonts/Inter-Regular.ttf")),
+        fast2d::fetch_file(&public_url!("/fonts/Inter-Bold.ttf")),
+        fast2d::fetch_file(&public_url!("/fonts/Inter-BoldItalic.ttf")),
+    ]).await.unwrap_throw();
+    fast2d::register_fonts(&fonts).unwrap_throw();
+}
+
 pub fn main() {
     Task::start(async {
-        let font_url = "/_api/public/fonts/FiraCode-Regular.ttf";
-        let font_bytes = fast2d::fetch_file(font_url).await.expect("fetch_file failed");
-
-        let font_url_2 = "/_api/public/fonts/Inter-Regular.ttf";
-        let font_bytes_2 = fast2d::fetch_file(font_url_2).await.expect("fetch_file failed");
-
-        let font_url_3 = "/_api/public/fonts/Inter-Bold.ttf";
-        let font_bytes_3 = fast2d::fetch_file(font_url_3).await.expect("fetch_file failed");
-
-        let font_url_4 = "/_api/public/fonts/Inter-BoldItalic.ttf";
-        let font_bytes_4 = fast2d::fetch_file(font_url_4).await.expect("fetch_file failed");
-
-        if let Err(error) = fast2d::register_fonts(&[font_bytes.as_slice(), font_bytes_2.as_slice(), font_bytes_3.as_slice(), font_bytes_4.as_slice()]) {
-            eprintln!("Failed to register font with fast2d: {error:?}");
-        }
+        load_and_register_fonts().await;
         start_app("app", root);
     });
 }
 
 fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
     [
-        { // Canvas 0: Simple Rectangle
+        { // Canvas 1: Simple Rectangle
             let mut canvas_wrapper = fast2d::CanvasWrapper::new();
             canvas_wrapper.update_objects(|objects| {
                 objects.push(
@@ -46,41 +42,6 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .color(255, 255, 255, 0.2)
                         .font_size(60.0)
                         .family(fast2d::Family::name("Fira Code"))
-                        .into(),
-                );
-            });
-            canvas_wrapper
-        },
-        { // Canvas 1: Sine Wave
-            let mut canvas_wrapper = fast2d::CanvasWrapper::new();
-            canvas_wrapper.update_objects(|objects| {
-                // Generate points for a sine wave - already f32
-                let mut sine_points_tuples = Vec::new(); // Use tuples for builder
-                let amplitude = 50.0;
-                let frequency = 0.02;
-                let y_offset = 150.0;
-                let steps = 100;
-                for i in 0..=steps {
-                    let x = (i as f32 / steps as f32) * 350.0;
-                    let y = y_offset + amplitude * (x * frequency * 2.0 * PI).sin();
-                    sine_points_tuples.push((x, y)); // Push tuple
-                }
-
-                objects.push(
-                    fast2d::Line::new()
-                        .points(&sine_points_tuples) // Pass slice of tuples
-                        .color(0, 255, 255, 1.0)
-                        .width(3.0) // Already f32
-                        .into(),
-                );
-                objects.push(
-                    fast2d::Text::new()
-                        .text("Sine Wave Example")
-                        .position(10.0, 10.0) // Use f32
-                        .size(300.0, 50.0)   // Use f32
-                        .color(255, 255, 255, 0.8)
-                        .font_size(20.0)  
-                        .family(fast2d::Family::name("Fira Code"))    // Already f32
                         .into(),
                 );
             });
@@ -201,7 +162,42 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                 );
             });
             canvas_wrapper
-        }
+        },
+        { // Canvas 3: Sine Wave
+            let mut canvas_wrapper = fast2d::CanvasWrapper::new();
+            canvas_wrapper.update_objects(|objects| {
+                // Generate points for a sine wave - already f32
+                let mut sine_points_tuples = Vec::new(); // Use tuples for builder
+                let amplitude = 50.0;
+                let frequency = 0.02;
+                let y_offset = 150.0;
+                let steps = 100;
+                for i in 0..=steps {
+                    let x = (i as f32 / steps as f32) * 350.0;
+                    let y = y_offset + amplitude * (x * frequency * 2.0 * PI).sin();
+                    sine_points_tuples.push((x, y)); // Push tuple
+                }
+
+                objects.push(
+                    fast2d::Line::new()
+                        .points(&sine_points_tuples) // Pass slice of tuples
+                        .color(0, 255, 255, 1.0)
+                        .width(3.0) // Already f32
+                        .into(),
+                );
+                objects.push(
+                    fast2d::Text::new()
+                        .text("Sine Wave Example")
+                        .position(10.0, 10.0) // Use f32
+                        .size(300.0, 50.0)   // Use f32
+                        .color(255, 255, 255, 0.8)
+                        .font_size(20.0)  
+                        .family(fast2d::Family::name("Fira Code"))    // Already f32
+                        .into(),
+                );
+            });
+            canvas_wrapper
+        },
     ]
 }
 
