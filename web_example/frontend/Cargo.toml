@@ -6,34 +6,9 @@ publish.workspace = true
 
 [dependencies]
 zoon.workspace = true
-fast2d = { path = "../../crates/fast2d", default-features = false }
-
-# Add web-sys directly to enable specific features
-[dependencies.web-sys]
-version = "0.3.77" # Explicitly use the locked version
-features = [
-    'Document',
-    'Window',
-    'FontFaceSet',
-    'FontFace',
-    'Response',
-    'Request',
-    'RequestInit',
-    'RequestMode',
-    'RequestCache',
-    'Headers',
-    'Blob',
-    'Url',
-    'console',
-    'HtmlCanvasElement', # Needed for canvas element manipulation
-]
-
-[features]
-# Change this line to switch the fast2d rendering API.
-default = ["webgl"]
-# default = ["webgpu"] 
-# default = ["canvas"]
-
-webgl = ["fast2d/webgl"]
-webgpu = ["fast2d/webgpu"]
-canvas = ["fast2d/canvas"]
+fast2d = { path = "../../crates/fast2d", default-features = false, features = [
+    # Choose one of the following rendering APIs:
+    "webgl",
+    # "webgpu",
+    # "canvas",
+] }

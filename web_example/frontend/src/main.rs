@@ -1,44 +1,17 @@
-use zoon::*;
+use zoon::{eprintln, *};
 
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::f32::consts::PI;
 
-// Remove the cfg attribute, as we want to always define this for the web example
-async fn fetch_and_register_fonts() {
-    use js_sys::{ArrayBuffer, Promise, Uint8Array};
-    use wasm_bindgen::{JsCast, JsValue};
-    use wasm_bindgen_futures::JsFuture;
-    use web_sys::{console, Response, Window};
-
-    let font_url = "/_api/public/fonts/FiraCode-Regular.ttf";
-
-    let window: Window = web_sys::window().expect("no global `window` exists");
-
-    // 1. Fetch the font data
-    let resp_value = JsFuture::from(window.fetch_with_str(font_url))
-        .await
-        .expect("fetch failed");
-    let resp: Response = resp_value.dyn_into().unwrap();
-    let buffer_promise: Promise = resp.array_buffer().unwrap();
-    let buffer_value: JsValue = JsFuture::from(buffer_promise)
-        .await
-        .expect("array_buffer failed");
-    let buffer: ArrayBuffer = buffer_value.dyn_into().unwrap();
-    let u8arr = Uint8Array::new(&buffer);
-    let mut font_bytes = vec![0u8; u8arr.length() as usize];
-    u8arr.copy_to(&mut font_bytes[..]);
-
-    // Register font with fast2d for all backends
-    if let Err(e) = fast2d::register_fonts(&[font_bytes.as_slice()]) {
-        console::error_1(&format!("Failed to register font with fast2d: {:?}", e).into());
-    }
-}
-
 pub fn main() {
-    // Always use Task::start and fetch fonts for the web example
     Task::start(async {
-        fetch_and_register_fonts().await;
+        let font_url = "/_api/public/fonts/FiraCode-Regular.ttf";
+        let font_bytes = fast2d::fetch_file(font_url).await.expect("fetch_file failed");
+
+        if let Err(error) = fast2d::register_fonts(&[font_bytes.as_slice()]) {
+            eprintln!("Failed to register font with fast2d: {error:?}");
+        }
         start_app("app", root);
     });
 }

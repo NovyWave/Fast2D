@@ -859,7 +859,7 @@ dependencies = [
  "euclid",
  "glyphon",
  "lyon",
- "ttf-parser 0.25.1",
+ "wasm-bindgen-futures",
  "web-sys",
  "wgpu",
 ]
@@ -928,7 +928,6 @@ name = "frontend"
 version = "0.1.0"
 dependencies = [
  "fast2d",
- "web-sys",
  "zoon",
 ]
 
@@ -1508,7 +1507,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -2846,12 +2845,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c591d83f69777866b9126b24c6dd9a18351f177e49d625920d19f989fd31cf8"
 
 [[package]]
-name = "ttf-parser"
-version = "0.25.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
-
-[[package]]
 name = "typenum"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3075,7 +3068,6 @@ dependencies = [
  "hashbrown",
  "js-sys",
  "log",
- "naga",
  "parking_lot 0.12.3",
  "portable-atomic",
  "profiling",
@@ -3083,7 +3075,6 @@ dependencies = [
  "smallvec 1.14.0",
  "static_assertions",
  "wasm-bindgen",
- "wasm-bindgen-futures",
  "web-sys",
  "wgpu-core",
  "wgpu-hal",
