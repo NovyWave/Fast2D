@@ -5,6 +5,19 @@ use glyphon::{FamilyOwned, Metrics, TextBounds};
 // Import shared Color type
 use super::types::Color;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FontWeight {
+    Thin,
+    ExtraLight,
+    Light,
+    Regular,
+    Medium,
+    SemiBold,
+    Bold,
+    ExtraBold,
+    Black,
+}
+
 #[derive(Debug, Clone)]
 pub struct Text {
     pub(crate) text: Cow<'static, str>,
@@ -19,6 +32,8 @@ pub struct Text {
     pub(crate) family: String, // Store family name as String for canvas
     pub(crate) width: f32,
     pub(crate) height: f32,
+    pub(crate) italic: bool,
+    pub(crate) weight: FontWeight,
 }
 
 impl Default for Text {
@@ -35,6 +50,8 @@ impl Default for Text {
                     family: FamilyOwned::SansSerif, // Use glyphon default
                     width: f32::MAX,
                     height: f32::MAX,
+                    italic: false,
+                    weight: FontWeight::Regular,
                 }
             } else {
                  Self {
@@ -47,6 +64,8 @@ impl Default for Text {
                     family: "sans-serif".to_string(), // Use string default for canvas
                     width: f32::MAX,
                     height: f32::MAX,
+                    italic: false,
+                    weight: FontWeight::Regular,
                 }
             }
         }
@@ -109,6 +128,16 @@ impl Text {
     pub fn size(mut self, width: f32, height: f32) -> Self {
         self.width = width;
         self.height = height;
+        self
+    }
+
+    pub fn italic(mut self, italic: bool) -> Self {
+        self.italic = italic;
+        self
+    }
+
+    pub fn weight(mut self, weight: FontWeight) -> Self {
+        self.weight = weight;
         self
     }
 }

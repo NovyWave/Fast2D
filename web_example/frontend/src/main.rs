@@ -15,7 +15,10 @@ pub fn main() {
         let font_url_3 = "/_api/public/fonts/Inter-Bold.ttf";
         let font_bytes_3 = fast2d::fetch_file(font_url_3).await.expect("fetch_file failed");
 
-        if let Err(error) = fast2d::register_fonts(&[font_bytes.as_slice(), font_bytes_2.as_slice(), font_bytes_3.as_slice()]) {
+        let font_url_4 = "/_api/public/fonts/Inter-BoldItalic.ttf";
+        let font_bytes_4 = fast2d::fetch_file(font_url_4).await.expect("fetch_file failed");
+
+        if let Err(error) = fast2d::register_fonts(&[font_bytes.as_slice(), font_bytes_2.as_slice(), font_bytes_3.as_slice(), font_bytes_4.as_slice()]) {
             eprintln!("Failed to register font with fast2d: {error:?}");
         }
         start_app("app", root);
@@ -167,19 +170,33 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .text("Face Example")
                         .position(10.0, 10.0) // Use f32
                         .size(150.0, 50.0)   // Use f32
-                        .color(255, 255, 255, 0.8)
+                        .color(255, 255, 255, 1.0)
                         .font_size(20.0)      // Already f32
                         .family(fast2d::Family::name("Inter"))
                         .into(),
                 );
                 objects.push(
                     fast2d::Text::new()
-                        .text("With a hat")
+                        .text("With a ")
                         .position(180.0, 10.0) // Use f32
-                        .size(300.0, 50.0)   // Use f32
-                        .color(255, 255, 255, 0.8)
+                        .size(70.0, 50.0)   // Use f32
+                        .color(255, 255, 0, 1.0)
                         .font_size(20.0)      // Already f32
                         .family(fast2d::Family::name("Inter"))
+                        .italic(false)
+                        .weight(fast2d::FontWeight::Bold)
+                        .into(),
+                );
+                objects.push(
+                    fast2d::Text::new()
+                        .text("hat")
+                        .position(250.0, 10.0) // Use f32
+                        .size(50.0, 50.0)   // Use f32
+                        .color(139, 0, 0, 1.0)
+                        .font_size(20.0)      // Already f32
+                        .family(fast2d::Family::name("Inter"))
+                        .italic(true)
+                        .weight(fast2d::FontWeight::Bold)
                         .into(),
                 );
             });

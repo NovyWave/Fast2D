@@ -202,6 +202,7 @@ pub use object_2d::circle::Circle;
 pub use object_2d::line::Line;
 pub use object_2d::types::{Color, Point, Size, BorderRadii as ObjBorderRadii}; // Re-export shared types
 pub use object_2d::types::Family;
+pub use crate::object_2d::text::FontWeight;
 
 #[cfg(not(feature = "canvas"))]
 pub use object_2d::FamilyOwned; // Re-export conditionally
@@ -350,6 +351,22 @@ impl CanvasWrapper {
 
 // --- Canvas Backend Implementation ---
 #[cfg(feature = "canvas")]
+fn font_weight_to_css(weight: &crate::object_2d::text::FontWeight) -> &'static str {
+    use crate::object_2d::text::FontWeight::*;
+    match weight {
+        Thin => "100",
+        ExtraLight => "200",
+        Light => "300",
+        Regular => "400",
+        Medium => "500",
+        SemiBold => "600",
+        Bold => "bold",
+        ExtraBold => "800",
+        Black => "900",
+    }
+}
+
+#[cfg(feature = "canvas")]
 fn draw_canvas(ctx: &CanvasRenderingContext2d, objects: &[Object2d]) {
     // Set default state (optional, but good practice)
     // Use correct non-deprecated methods
@@ -440,7 +457,9 @@ fn draw_canvas(ctx: &CanvasRenderingContext2d, objects: &[Object2d]) {
                 if text.color.a > 0.0 {
                     let fill_color = text.color.to_canvas_rgba();
                     ctx.set_fill_style_str(&fill_color);
-                    let font_str = format!("{}px {}", text.font_size, text.family);
+                    let font_style = if text.italic { "italic" } else { "normal" };
+                    let font_weight = font_weight_to_css(&text.weight);
+                    let font_str = format!("{} {} {}px {}", font_style, font_weight, text.font_size, text.family);
                     ctx.set_font(&font_str);
 
                     let max_width = text.width;
@@ -815,11 +834,15 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
 
 
             let glyphon_color = text.color.to_glyphon_color(); // Remove premultiplication
-
             // Use glyphon_family here, which might be a fallback if the original wasn't found
             // Glyphon itself will handle fallback if the specific family isn't found,
             // but the warning above informs the user.
-            buffer.set_text(&mut font_system, &text.text, &Attrs::new().family(glyphon_family).color(glyphon_color), Shaping::Advanced);
+            let attrs = Attrs::new()
+                .family(glyphon_family)
+                .color(glyphon_color)
+                .weight(font_weight_to_glyphon(text.weight))
+                .style(if text.italic { glyphon::fontdb::Style::Italic } else { glyphon::fontdb::Style::Normal });
+            buffer.set_text(&mut font_system, &text.text, &attrs, Shaping::Advanced);
             glyph_buffers.push(buffer);
         }
     }
@@ -994,6 +1017,22 @@ impl From<Family> for FamilyOwned {
             Family::Cursive => FamilyOwned::Cursive,
             Family::Fantasy => FamilyOwned::Fantasy,
         }
+    }
+}
+
+#[cfg(not(feature = "canvas"))]
+fn font_weight_to_glyphon(weight: crate::object_2d::text::FontWeight) -> glyphon::fontdb::Weight {
+    use crate::object_2d::text::FontWeight::*;
+    match weight {
+        Thin => glyphon::fontdb::Weight::THIN,
+        ExtraLight => glyphon::fontdb::Weight::EXTRA_LIGHT,
+        Light => glyphon::fontdb::Weight::LIGHT,
+        Regular => glyphon::fontdb::Weight::NORMAL,
+        Medium => glyphon::fontdb::Weight::MEDIUM,
+        SemiBold => glyphon::fontdb::Weight::SEMIBOLD,
+        Bold => glyphon::fontdb::Weight::BOLD,
+        ExtraBold => glyphon::fontdb::Weight::EXTRA_BOLD,
+        Black => glyphon::fontdb::Weight::BLACK,
     }
 }
 
