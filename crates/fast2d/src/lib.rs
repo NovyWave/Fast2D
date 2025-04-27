@@ -402,18 +402,49 @@ fn draw_canvas(ctx: &CanvasRenderingContext2d, objects: &[Object2d]) {
             }
             Object2d::Text(text) => {
                 if text.color.a > 0.0 {
-                     let fill_color = text.color.to_canvas_rgba();
-                     // Use correct non-deprecated method
-                     ctx.set_fill_style_str(&fill_color);
+                    let fill_color = text.color.to_canvas_rgba();
+                    ctx.set_fill_style_str(&fill_color);
+                    let font_str = format!("{}px {}", text.font_size, text.family);
+                    ctx.set_font(&font_str);
 
-                     // Use the family string directly
-                     let font_str = format!("{}px {}", text.font_size, text.family);
-                     ctx.set_font(&font_str);
+                    let max_width = text.width;
+                    let line_height = text.font_size * text.line_height_multiplier;
+                    let words: Vec<&str> = text.text.split_whitespace().collect();
+                    let mut lines: Vec<String> = Vec::new();
+                    let mut current_line = String::new();
 
-                     // Simple fillText - doesn't handle wrapping or line height multiplier
-                     ctx.fill_text(&text.text, text.left as f64, text.top as f64 + text.font_size as f64) // Adjust baseline
-                        .unwrap_throw();
-                 }
+                    for word in words {
+                        let test_line = if current_line.is_empty() {
+                            word.to_string()
+                        } else {
+                            format!("{} {}", current_line, word)
+                        };
+                        let metrics = ctx.measure_text(&test_line).unwrap_throw();
+                        if metrics.width() <= max_width as f64 || current_line.is_empty() {
+                            current_line = test_line;
+                        } else {
+                            lines.push(current_line);
+                            current_line = word.to_string();
+                        }
+                    }
+                    if !current_line.is_empty() {
+                        lines.push(current_line);
+                    }
+
+                    let mut y = text.top;
+                    for line in lines {
+                        let metrics = ctx.measure_text(&line).unwrap_throw();
+                        let ascent = metrics.actual_bounding_box_ascent();
+                        let font_box_ascent = metrics.font_bounding_box_ascent();
+                        let gap = font_box_ascent - ascent;
+                        let line_gap = if gap > 0.0 && gap < 1.0 { gap } else { 0.0 };
+                        ctx.fill_text(&line, text.left as f64, y as f64 + ascent + line_gap).unwrap_throw();
+                        y += line_height;
+                        if y > text.top + text.height {
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
@@ -768,13 +799,14 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
             let text_area = TextArea {
                 buffer: &glyph_buffers[buffer_idx],
                 left: text.left,
+                // Align the top of the text area with the rectangle (no artificial offset)
                 top: text.top,
                 bounds: TextBounds {
-                     left: text.left as i32,
-                     top: text.top as i32,
-                     right: (text.left + text_width_f32) as i32,
-                     bottom: (text.top + text_height_f32) as i32,
-                 },
+                    left: text.left as i32,
+                    top: text.top as i32,
+                    right: (text.left + text_width_f32) as i32,
+                    bottom: (text.top + text_height_f32) as i32,
+                },
                 default_color: glyphon_color, // Use adjusted sRGB color
                 scale: 1.0,
                 custom_glyphs: &[],

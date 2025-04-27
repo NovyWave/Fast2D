@@ -4,34 +4,65 @@ use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::f32::consts::PI;
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
+// Remove the cfg attribute, as we want to always define this for the web example
 async fn fetch_and_register_fonts() {
-    use wasm_bindgen::JsCast;
+    use js_sys::{ArrayBuffer, Promise, Uint8Array};
+    use wasm_bindgen::{JsCast, JsValue};
     use wasm_bindgen_futures::JsFuture;
-    use web_sys::Response;
+    use web_sys::{console, Document, FontFace, FontFaceSet, Response, Window};
 
     let font_url = "/_api/public/fonts/FiraCode-Regular.ttf";
-    let window = web_sys::window().expect("no global `window` exists");
-    let resp_value = JsFuture::from(window.fetch_with_str(font_url)).await.expect("fetch failed");
+    let font_family = "Fira Code"; // The name we'll use in CSS/Canvas
+    let font_spec = format!("1em {}", font_family); // Spec for document.fonts.load
+
+    let window: Window = web_sys::window().expect("no global `window` exists");
+    let document: Document = window.document().expect("should have a document on window");
+    let fonts: FontFaceSet = document.fonts();
+
+    // 1. Fetch the font data
+    let resp_value = JsFuture::from(window.fetch_with_str(font_url))
+        .await
+        .expect("fetch failed");
     let resp: Response = resp_value.dyn_into().unwrap();
-    let buffer = JsFuture::from(resp.array_buffer().unwrap()).await.expect("array_buffer failed");
-    let u8arr = js_sys::Uint8Array::new(&buffer);
+    let buffer_promise: Promise = resp.array_buffer().unwrap();
+    let buffer_value: JsValue = JsFuture::from(buffer_promise)
+        .await
+        .expect("array_buffer failed");
+    let buffer: ArrayBuffer = buffer_value.dyn_into().unwrap();
+    let u8arr = Uint8Array::new(&buffer);
     let mut font_bytes = vec![0u8; u8arr.length() as usize];
     u8arr.copy_to(&mut font_bytes[..]);
-    let fonts = vec![font_bytes.as_slice()];
-    if let Err(e) = fast2d::register_fonts(&fonts) {
-        zoon::eprintln!("Failed to register fonts: {:?}", e);
+
+    // Register font with fast2d only for webgl/webgpu
+    #[cfg(any(feature = "webgl", feature = "webgpu"))]
+    {
+        if let Err(e) = fast2d::register_fonts(&[font_bytes.as_slice()]) {
+            console::error_1(&format!("Failed to register font with fast2d: {:?}", e).into());
+        }
+    }
+
+    // Always use the FontFace API for browser font loading
+    match FontFace::new_with_array_buffer(font_family, &buffer) {
+        Ok(font_face) => {
+            fonts.add(&font_face).expect("Failed to add font face to document.fonts");
+            // Wait for the browser to load it
+            let load_promise = fonts.load(&font_spec);
+            if let Err(e) = JsFuture::from(load_promise).await {
+                console::error_1(&format!("Failed to wait for font loading: {:?}", e).into());
+            }
+        }
+        Err(e) => {
+            console::error_1(&format!("Failed to create FontFace object: {:?}", e).into());
+        }
     }
 }
 
 pub fn main() {
-    #[cfg(any(feature = "webgl", feature = "webgpu"))]
+    // Always use Task::start and fetch fonts for the web example
     Task::start(async {
         fetch_and_register_fonts().await;
         start_app("app", root);
     });
-    #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-    start_app("app", root);
 }
 
 fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {

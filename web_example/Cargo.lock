@@ -927,6 +927,7 @@ name = "frontend"
 version = "0.1.0"
 dependencies = [
  "fast2d",
+ "web-sys",
  "zoon",
 ]
 

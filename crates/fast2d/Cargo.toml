@@ -50,4 +50,5 @@ canvas = [
     "web-sys/Element",
     "web-sys/HtmlCanvasElement",
     "web-sys/Window",
+    "web-sys/TextMetrics", # <-- enable TextMetrics for text measurement
 ]

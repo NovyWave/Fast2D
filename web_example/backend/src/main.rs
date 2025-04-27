@@ -4,7 +4,6 @@ async fn frontend() -> Frontend {
     Frontend::new()
         .title("Fast2D Web Example")
         .index_by_robots(false)
-        .append_to_head(concat!("<style>", include_str!("style.css"), "</style>"))
 }
 
 async fn up_msg_handler(_: UpMsgRequest<()>) {}
