@@ -95,6 +95,42 @@ pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), FontSystemInitError> {
         })
 }
 
+#[cfg(feature = "canvas")]
+pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), String> {
+    use web_sys::{window, FontFace};
+    use ttf_parser::Face;
+    let win = window().ok_or("No window")?;
+    let doc = win.document().ok_or("No document")?;
+    let fonts_set = doc.fonts();
+    for font_bytes in fonts {
+        // Try to extract the family name from the font metadata
+        let family = Face::parse(font_bytes, 0)
+            .ok()
+            .and_then(|face| {
+                let mut family = None;
+                for name in face.names() {
+                    if name.name_id == ttf_parser::name_id::FAMILY {
+                        family = name.to_string();
+                        if family.is_some() {
+                            break;
+                        }
+                    }
+                }
+                family
+            })
+            .unwrap_or_else(|| {
+                console::warn_1(&JsValue::from_str("Warning: Could not extract font family name from font data. Using 'CustomFont'."));
+                "CustomFont".to_string()
+            });
+        let buffer = web_sys::js_sys::Uint8Array::from(*font_bytes);
+        let array_buffer = buffer.buffer();
+        let font_face = FontFace::new_with_array_buffer(&family, &array_buffer)
+            .map_err(|e| format!("FontFace error: {:?}", e))?;
+        fonts_set.add(&font_face).map_err(|e| format!("Add font error: {:?}", e))?;
+    }
+    Ok(())
+}
+
 // --- Conditional Structs ---
 #[cfg(not(feature = "canvas"))]
 #[repr(C)]

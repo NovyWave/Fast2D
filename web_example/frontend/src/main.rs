@@ -9,15 +9,11 @@ async fn fetch_and_register_fonts() {
     use js_sys::{ArrayBuffer, Promise, Uint8Array};
     use wasm_bindgen::{JsCast, JsValue};
     use wasm_bindgen_futures::JsFuture;
-    use web_sys::{console, Document, FontFace, FontFaceSet, Response, Window};
+    use web_sys::{console, Response, Window};
 
     let font_url = "/_api/public/fonts/FiraCode-Regular.ttf";
-    let font_family = "Fira Code"; // The name we'll use in CSS/Canvas
-    let font_spec = format!("1em {}", font_family); // Spec for document.fonts.load
 
     let window: Window = web_sys::window().expect("no global `window` exists");
-    let document: Document = window.document().expect("should have a document on window");
-    let fonts: FontFaceSet = document.fonts();
 
     // 1. Fetch the font data
     let resp_value = JsFuture::from(window.fetch_with_str(font_url))
@@ -33,27 +29,9 @@ async fn fetch_and_register_fonts() {
     let mut font_bytes = vec![0u8; u8arr.length() as usize];
     u8arr.copy_to(&mut font_bytes[..]);
 
-    // Register font with fast2d only for webgl/webgpu
-    #[cfg(any(feature = "webgl", feature = "webgpu"))]
-    {
-        if let Err(e) = fast2d::register_fonts(&[font_bytes.as_slice()]) {
-            console::error_1(&format!("Failed to register font with fast2d: {:?}", e).into());
-        }
-    }
-
-    // Always use the FontFace API for browser font loading
-    match FontFace::new_with_array_buffer(font_family, &buffer) {
-        Ok(font_face) => {
-            fonts.add(&font_face).expect("Failed to add font face to document.fonts");
-            // Wait for the browser to load it
-            let load_promise = fonts.load(&font_spec);
-            if let Err(e) = JsFuture::from(load_promise).await {
-                console::error_1(&format!("Failed to wait for font loading: {:?}", e).into());
-            }
-        }
-        Err(e) => {
-            console::error_1(&format!("Failed to create FontFace object: {:?}", e).into());
-        }
+    // Register font with fast2d for all backends
+    if let Err(e) = fast2d::register_fonts(&[font_bytes.as_slice()]) {
+        console::error_1(&format!("Failed to register font with fast2d: {:?}", e).into());
     }
 }
 
