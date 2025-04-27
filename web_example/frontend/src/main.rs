@@ -52,10 +52,9 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .text("Simple Rectangle")
                         .position(10.0, 50.0) // Use f32
                         .size(350.0, 120.0)   // Use f32
-                        // Revert to original alpha
                         .color(255, 255, 255, 0.2)
                         .font_size(60.0)
-                        // .family(fast2d::Family::Name("Fira Code"))
+                        .family(fast2d::Family::name("Fira Code"))
                         .into(),
                 );
             });
@@ -90,7 +89,7 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .size(300.0, 50.0)   // Use f32
                         .color(255, 255, 255, 0.8)
                         .font_size(20.0)      // Already f32
-                        // .family(fast2d::Family::Name("Fira Code"))
+                        .family(fast2d::Family::name("Fira Code"))
                         .into(),
                 );
             });
@@ -182,7 +181,7 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .size(300.0, 50.0)   // Use f32
                         .color(255, 255, 255, 0.8)
                         .font_size(20.0)      // Already f32
-                        // .family(fast2d::Family::Name("Fira Code"))
+                        .family(fast2d::Family::name("Fira Code"))
                         .into(),
                 );
             });

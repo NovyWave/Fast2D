@@ -160,6 +160,7 @@ pub use object_2d::rectangle::Rectangle;
 pub use object_2d::circle::Circle;
 pub use object_2d::line::Line;
 pub use object_2d::types::{Color, Point, Size, BorderRadii as ObjBorderRadii}; // Re-export shared types
+pub use object_2d::types::Family;
 
 #[cfg(not(feature = "canvas"))]
 pub use object_2d::FamilyOwned; // Re-export conditionally
@@ -853,4 +854,32 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
     }
     gfx.queue.submit(std::iter::once(encoder.finish()));
     output.present();
+}
+
+#[cfg(not(feature = "canvas"))]
+impl From<&crate::Family> for crate::FamilyOwned {
+    fn from(family: &crate::Family) -> Self {
+        match family {
+            crate::Family::Name(name) => crate::FamilyOwned::Name(name.clone().to_owned().into()),
+            crate::Family::SansSerif => crate::FamilyOwned::SansSerif,
+            crate::Family::Serif => crate::FamilyOwned::Serif,
+            crate::Family::Monospace => crate::FamilyOwned::Monospace,
+            crate::Family::Cursive => crate::FamilyOwned::Cursive,
+            crate::Family::Fantasy => crate::FamilyOwned::Fantasy,
+        }
+    }
+}
+
+#[cfg(not(feature = "canvas"))]
+impl From<Family> for FamilyOwned {
+    fn from(family: Family) -> Self {
+        match family {
+            Family::Name(name) => FamilyOwned::Name(name.into()),
+            Family::SansSerif => FamilyOwned::SansSerif,
+            Family::Serif => FamilyOwned::Serif,
+            Family::Monospace => FamilyOwned::Monospace,
+            Family::Cursive => FamilyOwned::Cursive,
+            Family::Fantasy => FamilyOwned::Fantasy,
+        }
+    }
 }

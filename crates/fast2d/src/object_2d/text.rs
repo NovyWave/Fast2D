@@ -92,8 +92,8 @@ impl Text {
     }
 
     #[cfg(not(feature = "canvas"))]
-    pub fn family(mut self, family: FamilyOwned) -> Self {
-        self.family = family;
+    pub fn family(mut self, family: crate::Family) -> Self {
+        self.family = family.into();
         self
     }
 

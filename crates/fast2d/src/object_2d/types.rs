@@ -1,4 +1,5 @@
 // ... (imports) ...
+use std::borrow::Cow;
 
 /// Shared, backend-agnostic types for 2D objects.
 
@@ -143,5 +144,42 @@ pub use glyphon::FamilyOwned;
 
 #[cfg(not(feature = "canvas"))]
 use glyphon::Color as GlyphonColor; // Conditionally import GlyphonColor
+
+/// Unified font family enum for all backends.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Family {
+    Name(String),
+    SansSerif,
+    Serif,
+    Monospace,
+    Cursive,
+    Fantasy,
+}
+
+impl From<&Family> for String {
+    fn from(family: &Family) -> Self {
+        match family {
+            Family::Name(name) => name.clone(),
+            Family::SansSerif => "sans-serif".to_owned(),
+            Family::Serif => "serif".to_owned(),
+            Family::Monospace => "monospace".to_owned(),
+            Family::Cursive => "cursive".to_owned(),
+            Family::Fantasy => "fantasy".to_owned(),
+        }
+    }
+}
+
+impl From<Family> for String {
+    fn from(family: Family) -> Self {
+        String::from(&family)
+    }
+}
+
+impl Family {
+    /// Helper to create a Family::Name from a string literal or String.
+    pub fn name<S: Into<String>>(name: S) -> Self {
+        Family::Name(name.into())
+    }
+}
 
 // Ensure no duplicate definitions remain below this line
