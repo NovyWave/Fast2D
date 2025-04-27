@@ -81,6 +81,11 @@ pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), FontSystemInitError> {
     // Validate that a default font is available
     // Remove db.default_family().is_none() check, only check if any face is loaded
     if db.faces().next().is_none() {
+        // Show a warning in the browser console if no valid font is loaded
+        #[cfg(target_arch = "wasm32")]
+        web_sys::console::warn_1(&JsValue::from_str(
+            "Warning: No valid font loaded. The chosen font may not be available."
+        ));
         return Err(FontSystemInitError::DatabaseError("No valid font loaded".to_string()));
     }
     FONT_SYSTEM.set(Mutex::new(font_system))
@@ -700,14 +705,54 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
             let line_height_pixels = text.font_size * text.line_height_multiplier;
             let mut buffer = GlyphonBuffer::new(&mut font_system, Metrics::new(text.font_size, line_height_pixels));
             buffer.set_size(&mut font_system, Some(text_width_f32), Some(text_height_f32));
-            let family_name = match &text.family {
+
+            // Convert our Family enum to FamilyOwned, then to GlyphonFamily
+            let family_owned: FamilyOwned = text.family.clone().into(); // Convert Family -> FamilyOwned
+            let glyphon_family = match &family_owned {
                 FamilyOwned::Name(name) => GlyphonFamily::Name(name.as_str()),
-                _ => GlyphonFamily::SansSerif,
+                FamilyOwned::SansSerif => GlyphonFamily::SansSerif,
+                FamilyOwned::Serif => GlyphonFamily::Serif,
+                FamilyOwned::Monospace => GlyphonFamily::Monospace,
+                FamilyOwned::Cursive => GlyphonFamily::Cursive,
+                FamilyOwned::Fantasy => GlyphonFamily::Fantasy,
             };
+
+            // Create a glyphon::fontdb::Family variant with a longer lifetime
+            let family_for_query = match &glyphon_family {
+                GlyphonFamily::Name(name) => glyphon::fontdb::Family::Name(name),
+                GlyphonFamily::SansSerif => glyphon::fontdb::Family::SansSerif,
+                GlyphonFamily::Serif => glyphon::fontdb::Family::Serif,
+                GlyphonFamily::Monospace => glyphon::fontdb::Family::Monospace,
+                GlyphonFamily::Cursive => glyphon::fontdb::Family::Cursive,
+                GlyphonFamily::Fantasy => glyphon::fontdb::Family::Fantasy,
+            };
+
+            // Create a glyphon::fontdb::Query using the longer-lived family
+            let font_query = glyphon::fontdb::Query {
+                families: &[family_for_query], // Borrow from the longer-lived variable
+                ..Default::default()
+            };
+
+            // Check if the font family exists in the database using the glyphon::fontdb::Query
+            let font_exists = font_system.db().query(&font_query).is_some();
+            if !font_exists {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    let warning_message = format!("Warning: Font family '{:?}' not found. Falling back to default.", text.family);
+                    web_sys::console::warn_1(&JsValue::from_str(&warning_message));
+                }
+                // Optionally, log to stderr on non-wasm targets
+                #[cfg(not(target_arch = "wasm32"))]
+                eprintln!("Warning: Font family '{:?}' not found. Falling back to default.", text.family);
+            }
+
 
             let glyphon_color = text.color.to_glyphon_color(); // Remove premultiplication
 
-            buffer.set_text(&mut font_system, &text.text, &Attrs::new().family(family_name).color(glyphon_color), Shaping::Advanced);
+            // Use glyphon_family here, which might be a fallback if the original wasn't found
+            // Glyphon itself will handle fallback if the specific family isn't found,
+            // but the warning above informs the user.
+            buffer.set_text(&mut font_system, &text.text, &Attrs::new().family(glyphon_family).color(glyphon_color), Shaping::Advanced);
             glyph_buffers.push(buffer);
         }
     }

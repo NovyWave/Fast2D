@@ -181,7 +181,7 @@ fn canvas_wrappers() -> [fast2d::CanvasWrapper; 3] {
                         .size(300.0, 50.0)   // Use f32
                         .color(255, 255, 255, 0.8)
                         .font_size(20.0)      // Already f32
-                        .family(fast2d::Family::name("Fira Code"))
+                        .family(fast2d::Family::name("Arial"))
                         .into(),
                 );
             });
