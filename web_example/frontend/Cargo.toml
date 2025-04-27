@@ -10,9 +10,9 @@ fast2d = { path = "../../crates/fast2d", default-features = false }
 
 [features]
 # Change this line to switch the fast2d rendering API.
-default = ["webgl"] 
+# default = ["webgl"] 
 # default = ["webgpu"] 
-# default = ["canvas"]
+default = ["canvas"]
 
 webgl = ["fast2d/webgl"]
 webgpu = ["fast2d/webgpu"]
