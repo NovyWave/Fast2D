@@ -4,29 +4,33 @@ use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::f32::consts::PI;
 
-pub fn main() {
-    // --- Prepare font data for initialization (only needed if not using canvas) ---
-    #[cfg(not(feature = "canvas"))]
-    let font_data_to_register: Vec<&'static [u8]> = vec![
-        include_bytes!("../fonts/FiraCode-Regular.ttf"),
-    ];
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
+async fn fetch_and_register_fonts() {
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::Response;
 
-    // --- Initialize Fast2D with the font system (only if not using canvas) ---
-    #[cfg(not(feature = "canvas"))]
-    {
-        if let Err(e) = fast2d::init_font_system(font_data_to_register) {
-            // Use zoon::eprintln! directly
-            zoon::eprintln!("Failed to initialize Fast2D Font System: {:?}", e);
-            // Add specific error handling if needed
-            match e {
-                // Use zoon::eprintln! directly
-                fast2d::FontSystemInitError::AlreadyInitialized => zoon::eprintln!("Warning: FontSystem already initialized."),
-                fast2d::FontSystemInitError::NoFontsProvided => panic!("No font data provided to init_font_system."),
-                fast2d::FontSystemInitError::DatabaseError(err) => panic!("Error loading font data: {}", err), // Adjust if error type changes
-            }
-        }
+    let font_url = "/_api/public/fonts/FiraCode-Regular.ttf";
+    let window = web_sys::window().expect("no global `window` exists");
+    let resp_value = JsFuture::from(window.fetch_with_str(font_url)).await.expect("fetch failed");
+    let resp: Response = resp_value.dyn_into().unwrap();
+    let buffer = JsFuture::from(resp.array_buffer().unwrap()).await.expect("array_buffer failed");
+    let u8arr = js_sys::Uint8Array::new(&buffer);
+    let mut font_bytes = vec![0u8; u8arr.length() as usize];
+    u8arr.copy_to(&mut font_bytes[..]);
+    let fonts = vec![font_bytes.as_slice()];
+    if let Err(e) = fast2d::register_fonts(&fonts) {
+        zoon::eprintln!("Failed to register fonts: {:?}", e);
     }
+}
 
+pub fn main() {
+    #[cfg(any(feature = "webgl", feature = "webgpu"))]
+    Task::start(async {
+        fetch_and_register_fonts().await;
+        start_app("app", root);
+    });
+    #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
     start_app("app", root);
 }
 

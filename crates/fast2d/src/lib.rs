@@ -64,26 +64,27 @@ pub enum FontSystemInitError {
     NoFontsProvided,
 }
 
-#[cfg(not(feature = "canvas"))]
-/// Initializes the cosmic-text FontSystem (WGPU/WebGL only).
-pub fn init_font_system(font_data: Vec<&'static [u8]>) -> Result<(), FontSystemInitError> {
-    if font_data.is_empty() {
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
+/// Registers font data for use in Fast2D text rendering (WebGL/WebGPU only).
+/// This should be called before any text rendering, and before creating canvases.
+/// On backends that do not require explicit font registration, this function is not available.
+pub fn register_fonts(fonts: &[&[u8]]) -> Result<(), FontSystemInitError> {
+    if fonts.is_empty() {
         return Err(FontSystemInitError::NoFontsProvided);
     }
-
-    // Create a FontSystem (adjust locale/db as needed)
+    let font_vec: Vec<Vec<u8>> = fonts.iter().map(|f| f.to_vec()).collect();
     let mut font_system = FontSystem::new();
     let db = font_system.db_mut();
-    for data in font_data {
-        // Loading might return errors, collect them or handle appropriately
-        db.load_font_data(data.to_vec()); // Consider error handling here
+    for data in font_vec {
+        db.load_font_data(data);
     }
-    // You might want more robust error checking on font loading
-
-    // Wrap the initialized font_system in a Mutex before setting
+    // Validate that a default font is available
+    // Remove db.default_family().is_none() check, only check if any face is loaded
+    if db.faces().next().is_none() {
+        return Err(FontSystemInitError::DatabaseError("No valid font loaded".to_string()));
+    }
     FONT_SYSTEM.set(Mutex::new(font_system))
         .map_err(|_| {
-            // Use console::warn_1 for already initialized
             console::warn_1(&JsValue::from_str("Warning: FontSystem already initialized."));
             FontSystemInitError::AlreadyInitialized
         })
