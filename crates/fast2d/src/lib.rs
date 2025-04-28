@@ -282,19 +282,9 @@ impl CanvasWrapper {
                     .dyn_into::<CanvasRenderingContext2d>() // JsCast is now in scope via conditional import
                     .unwrap_throw(); // Handle incorrect type
                 self.context = Some(context_object);
-                // Use console::log_1
-                console::log_1(&JsValue::from_str("Fast2D: Initialized with Canvas backend."));
             } else {
                 // Initialize WGPU graphics (uses width, height)
                 self.graphics = Some(create_graphics(canvas, width, height).await);
-                 // Use console::log_1 with conditional message
-                 #[cfg(feature = "webgl")]
-                 console::log_1(&JsValue::from_str("Fast2D: Initialized with WebGL backend."));
-                 #[cfg(feature = "webgpu")] // This message is correctly logged when webgpu feature is enabled
-                 console::log_1(&JsValue::from_str("Fast2D: Initialized with WebGPU backend."));
-                 // Fallback in case neither is explicitly set but canvas isn't either (shouldn't happen with compile checks)
-                 #[cfg(not(any(feature = "webgl", feature = "webgpu")))]
-                 console::log_1(&JsValue::from_str("Fast2D: Initialized with WGPU/WebGL backend (feature unclear)."));
             }
         }
         self.draw(); // Initial draw
@@ -582,10 +572,6 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
         .find(|format| surface_caps.formats.contains(format))
         .unwrap_or(surface_caps.formats[0]);
     let is_srgb = false; // Always treat as linear
-    console::log_1(&JsValue::from_str(&format!(
-        "Fast2D: Forcing linear surface format: {:?}",
-        surface_format
-    )));
 
     // --- REMOVE View Formats Logic (Conditional) --- <<<<<<<<<<<< REMOVED
     // let mut config_view_formats = vec![];
@@ -678,10 +664,8 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
 
     // --- Use original ColorMode logic (Accurate for sRGB) ---
     let color_mode = if is_srgb {
-        console::log_1(&JsValue::from_str("Fast2D: Using Glyphon ColorMode::Accurate for sRGB target."));
         ColorMode::Accurate
     } else {
-        console::log_1(&JsValue::from_str("Fast2D: Using Glyphon ColorMode::Web for non-sRGB target."));
         ColorMode::Web // Default, performs internal sRGB->linear
     };
 
