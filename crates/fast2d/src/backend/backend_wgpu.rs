@@ -320,7 +320,7 @@ pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             let mut buffer = GlyphonBuffer::new(&mut font_system, Metrics::new(text.font_size, line_height_pixels));
             buffer.set_size(&mut font_system, Some(text_width_f32), Some(text_height_f32));
 
-            let family_owned: FamilyOwned = text.family.clone().into();
+            let family_owned: FamilyOwned = (&text.family).into();
             let glyphon_family = match &family_owned {
                 FamilyOwned::Name(name) => GlyphonFamily::Name(name.as_str()),
                 FamilyOwned::SansSerif => GlyphonFamily::SansSerif,
@@ -346,13 +346,8 @@ pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
 
             let font_exists = font_system.db().query(&font_query).is_some();
             if !font_exists {
-                #[cfg(target_arch = "wasm32")]
-                {
-                    let warning_message = format!("Warning: Font family '{:?}' not found. Falling back to default.", text.family);
-                    web_sys::console::warn_1(&JsValue::from_str(&warning_message));
-                }
-                #[cfg(not(target_arch = "wasm32"))]
-                eprintln!("Warning: Font family '{:?}' not found. Falling back to default.");
+                let warning_message = format!("Warning: Font family '{:?}' not found. Falling back to default.", text.family);
+                web_sys::console::warn_1(&JsValue::from_str(&warning_message));
             }
 
             let glyphon_color = text.color.to_glyphon_color();
@@ -500,8 +495,8 @@ pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     output.present();
 }
 
-pub fn font_weight_to_glyphon(weight: crate::object2d::text::FontWeight) -> glyphon::fontdb::Weight {
-    use crate::object2d::text::FontWeight::*;
+pub fn font_weight_to_glyphon(weight: crate::object2d::FontWeight) -> glyphon::fontdb::Weight {
+    use crate::object2d::FontWeight::*;
     match weight {
         Thin => glyphon::fontdb::Weight::THIN,
         ExtraLight => glyphon::fontdb::Weight::EXTRA_LIGHT,
@@ -512,5 +507,20 @@ pub fn font_weight_to_glyphon(weight: crate::object2d::text::FontWeight) -> glyp
         Bold => glyphon::fontdb::Weight::BOLD,
         ExtraBold => glyphon::fontdb::Weight::EXTRA_BOLD,
         Black => glyphon::fontdb::Weight::BLACK,
+    }
+}
+
+// Backend-specific conversion: Family -> glyphon::FamilyOwned
+impl From<&crate::object2d::Family> for glyphon::FamilyOwned {
+    fn from(family: &crate::object2d::Family) -> Self {
+        use crate::object2d::Family;
+        match family {
+            Family::Name(name) => glyphon::FamilyOwned::Name(name.clone().into_owned().into()),
+            Family::SansSerif => glyphon::FamilyOwned::SansSerif,
+            Family::Serif => glyphon::FamilyOwned::Serif,
+            Family::Monospace => glyphon::FamilyOwned::Monospace,
+            Family::Cursive => glyphon::FamilyOwned::Cursive,
+            Family::Fantasy => glyphon::FamilyOwned::Fantasy,
+        }
     }
 }

@@ -127,8 +127,8 @@ pub(crate) fn draw_canvas(ctx: &web_sys::CanvasRenderingContext2d, objects: &[cr
     }
 }
 
-pub(crate) fn font_weight_to_css(weight: &crate::object_2d::text::FontWeight) -> &'static str {
-    use crate::object_2d::text::FontWeight::*;
+pub(crate) fn font_weight_to_css(weight: &crate::object2d::FontWeight) -> &'static str {
+    use crate::object2d::FontWeight::*;
     match weight {
         Thin => "100",
         ExtraLight => "200",

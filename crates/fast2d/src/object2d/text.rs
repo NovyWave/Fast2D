@@ -1,9 +1,8 @@
 use std::borrow::Cow;
-// Conditionally import glyphon types
-#[cfg(not(feature = "canvas"))]
-use glyphon::{FamilyOwned, Metrics, TextBounds};
-// Import shared Color type
 use super::types::Color;
+
+mod family;
+pub use family::Family;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FontWeight {
@@ -26,10 +25,7 @@ pub struct Text {
     pub(crate) font_size: f32,
     pub(crate) line_height_multiplier: f32,
     pub(crate) color: Color, // Use shared Color type
-    #[cfg(not(feature = "canvas"))] // Conditionally compile FamilyOwned
-    pub(crate) family: FamilyOwned,
-    #[cfg(feature = "canvas")] // Placeholder for canvas
-    pub(crate) family: String, // Store family name as String for canvas
+    pub(crate) family: Family, // Always use Family, no conditional compilation
     pub(crate) width: f32,
     pub(crate) height: f32,
     pub(crate) italic: bool,
@@ -38,36 +34,18 @@ pub struct Text {
 
 impl Default for Text {
     fn default() -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(not(feature = "canvas"))] {
-                Self {
-                    text: Cow::Borrowed(""),
-                    left: 0.0,
-                    top: 0.0,
-                    font_size: 16.0,
-                    line_height_multiplier: 1.0,
-                    color: Color::WHITE, // Use shared Color default
-                    family: FamilyOwned::SansSerif, // Use glyphon default
-                    width: f32::MAX,
-                    height: f32::MAX,
-                    italic: false,
-                    weight: FontWeight::Regular,
-                }
-            } else {
-                 Self {
-                    text: Cow::Borrowed(""),
-                    left: 0.0,
-                    top: 0.0,
-                    font_size: 16.0,
-                    line_height_multiplier: 1.0,
-                    color: Color::WHITE, // Use shared Color default
-                    family: "sans-serif".to_string(), // Use string default for canvas
-                    width: f32::MAX,
-                    height: f32::MAX,
-                    italic: false,
-                    weight: FontWeight::Regular,
-                }
-            }
+        Self {
+            text: Cow::Borrowed(""),
+            left: 0.0,
+            top: 0.0,
+            font_size: 16.0,
+            line_height_multiplier: 1.0,
+            color: Color::WHITE,
+            family: Family::sans_serif(),
+            width: f32::MAX,
+            height: f32::MAX,
+            italic: false,
+            weight: FontWeight::Regular,
         }
     }
 }
@@ -110,18 +88,8 @@ impl Text {
         self
     }
 
-    #[cfg(not(feature = "canvas"))]
-    pub fn family(mut self, family: crate::Family) -> Self {
-        self.family = family.into();
-        self
-    }
-
-    // Add a family method for canvas that takes a string
-    #[cfg(feature = "canvas")]
-    pub fn family(mut self, family_name: impl Into<String>) -> Self {
-        self.family = family_name.into();
-        // Basic validation/mapping could be added here if desired
-        // e.g., map "serif" to standard CSS "serif"
+    pub fn family(mut self, family: Family) -> Self {
+        self.family = family;
         self
     }
 

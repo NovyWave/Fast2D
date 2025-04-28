@@ -28,13 +28,13 @@ pub use crate::backend::{
 // --- Shared Structs/Enums ---
 // Declare the object_2d module and re-export structs (shared)
 mod object2d;
-pub use object2d::text::Text;
-pub use object2d::rectangle::Rectangle;
-pub use object2d::circle::Circle;
-pub use object2d::line::Line;
+pub use object2d::Text;
+pub use object2d::Rectangle;
+pub use object2d::Circle;
+pub use object2d::Line;
 pub use object2d::types::{Color, Point, Size, BorderRadii as ObjBorderRadii}; // Re-export shared types
-pub use object2d::types::Family;
-pub use crate::object2d::text::FontWeight;
+pub use object2d::Family;
+pub use object2d::FontWeight;
 
 #[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub use object2d::FamilyOwned; // Re-export conditionally
