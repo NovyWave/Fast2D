@@ -1,15 +1,16 @@
-#![allow(unused_imports)] // Allow unused imports in this module definition file
+pub mod types;
 
-pub mod types; // Declare the new types module
-pub mod text;
-pub mod rectangle;
-pub mod circle;
-pub mod line; // Add line module
+mod text;
+pub use text::{Text, FontWeight, Family};
 
-pub use circle::Circle;
+mod rectangle;
 pub use rectangle::Rectangle;
-pub use text::Text;
-pub use line::Line; // Re-export Line
+
+mod circle;
+pub use circle::Circle;
+
+mod line; 
+pub use line::Line; 
 
 // Re-export the shared types for easier use
 pub use types::{Color, Point, Size, BorderRadii};
