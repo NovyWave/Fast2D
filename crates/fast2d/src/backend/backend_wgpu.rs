@@ -1,7 +1,6 @@
 mod register_fonts;
 pub use register_fonts::register_fonts;
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 use {
     lyon::path::{Path, Winding},
     lyon::path::builder::BorderRadii as LyonBorderRadii,
@@ -21,13 +20,9 @@ use {
     lyon::math::point,
 };
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub static FONT_SYSTEM: std::sync::OnceLock<std::sync::Mutex<glyphon::FontSystem>> = std::sync::OnceLock::new();
-
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub const MSAA_SAMPLE_COUNT: u32 = 4;
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[derive(Debug)]
 pub enum FontSystemInitError {
     DatabaseError(String),
@@ -35,7 +30,6 @@ pub enum FontSystemInitError {
     NoFontsProvided,
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CanvasUniforms {
@@ -45,7 +39,6 @@ pub struct CanvasUniforms {
     pub _padding2: f32,
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ColoredVertex {
@@ -53,7 +46,6 @@ pub struct ColoredVertex {
     pub color: [f32; 4],
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 impl ColoredVertex {
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
@@ -75,7 +67,6 @@ impl ColoredVertex {
     }
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[allow(dead_code)]
 pub struct Graphics {
     pub device: Device,
@@ -94,7 +85,6 @@ pub struct Graphics {
     pub rect_pipeline: wgpu::RenderPipeline,
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> Graphics {
     let instance = wgpu::Instance::default();
     let surface = instance
@@ -296,7 +286,6 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
     }
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     let output = match gfx.surface.get_current_texture() {
         Ok(texture) => texture,
@@ -508,7 +497,6 @@ pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     output.present();
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub fn font_weight_to_glyphon(weight: crate::object_2d::text::FontWeight) -> glyphon::fontdb::Weight {
     use crate::object_2d::text::FontWeight::*;
     match weight {

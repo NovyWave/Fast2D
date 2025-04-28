@@ -1,11 +1,8 @@
 mod register_fonts;
 pub use register_fonts::register_fonts;
 
-// Canvas backend implementation and related types
-#[cfg(feature = "canvas")]
 use web_sys::wasm_bindgen::UnwrapThrowExt;
 
-#[cfg(feature = "canvas")]
 pub(crate) fn draw_canvas(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]) {
     // Set default state (optional, but good practice)
     ctx.set_fill_style_str("black"); // Default fill
@@ -127,7 +124,6 @@ pub(crate) fn draw_canvas(ctx: &web_sys::CanvasRenderingContext2d, objects: &[cr
     }
 }
 
-#[cfg(feature = "canvas")]
 pub(crate) fn font_weight_to_css(weight: &crate::object_2d::text::FontWeight) -> &'static str {
     use crate::object_2d::text::FontWeight::*;
     match weight {

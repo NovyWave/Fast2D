@@ -1,12 +1,7 @@
-#[cfg(feature = "canvas")]
 use web_sys::{window, FontFace, FontFaceDescriptors};
-#[cfg(feature = "canvas")]
 use ttf_parser::{Face, name_id};
-#[cfg(feature = "canvas")]
 use web_sys::wasm_bindgen::JsValue;
 
-// ...existing code...
-#[cfg(feature = "canvas")]
 pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), String> {
     let win = window().ok_or("No window")?;
     let doc = win.document().ok_or("No document")?;
@@ -60,4 +55,3 @@ pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), String> {
     }
     Ok(())
 }
-// ...existing code...

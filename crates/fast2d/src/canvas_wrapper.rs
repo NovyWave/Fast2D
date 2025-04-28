@@ -1,60 +1,46 @@
 use crate::Object2d;
 use web_sys::HtmlCanvasElement;
-#[cfg(feature = "canvas")]
-use web_sys::CanvasRenderingContext2d;
-#[cfg(feature = "canvas")]
-use web_sys::wasm_bindgen::UnwrapThrowExt;
-#[cfg(feature = "canvas")]
-use web_sys::wasm_bindgen::JsCast;
-#[cfg(not(feature = "canvas"))]
-use crate::backend::Graphics;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "canvas")] {
+        use web_sys::CanvasRenderingContext2d;
+        type BackendContext = CanvasRenderingContext2d;
+    } else {
+        use crate::backend::Graphics;
+        type BackendContext = Graphics;
+    }
+}
 
 /// CanvasWrapper manages a collection of 2D objects and the associated canvas element/context/graphics.
 pub struct CanvasWrapper {
     objects: Vec<Object2d>,
     canvas_element: Option<HtmlCanvasElement>,
-    #[cfg(feature = "canvas")]
-    context: Option<CanvasRenderingContext2d>,
-    #[cfg(not(feature = "canvas"))]
-    graphics: Option<Graphics>,
+    backend: Option<BackendContext>,
 }
 
 impl CanvasWrapper {
     pub fn new() -> Self {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "canvas")] {
-                Self {
-                    objects: Vec::new(),
-                    canvas_element: None,
-                    context: None,
-                }
-            } else {
-                Self {
-                    objects: Vec::new(),
-                    canvas_element: None,
-                    graphics: None,
-                }
-            }
+        Self {
+            objects: Vec::new(),
+            canvas_element: None,
+            backend: None,
         }
     }
 
-    #[cfg_attr(feature = "canvas", allow(unused_variables))]
     pub async fn set_canvas(&mut self, canvas: HtmlCanvasElement) {
         let width = canvas.width().max(1);
         let height = canvas.height().max(1);
         self.canvas_element = Some(canvas.clone());
         cfg_if::cfg_if! {
             if #[cfg(feature = "canvas")] {
-                // Get 2D rendering context
                 let context_object = canvas
                     .get_context("2d")
                     .unwrap_throw()
                     .unwrap_throw()
-                    .dyn_into::<CanvasRenderingContext2d>()
+                    .dyn_into::<BackendContext>()
                     .unwrap_throw();
-                self.context = Some(context_object);
+                self.backend = Some(context_object);
             } else {
-                self.graphics = Some(super::create_graphics(canvas, width, height).await);
+                self.backend = Some(super::create_graphics(canvas, width, height).await);
             }
         }
         self.draw();
@@ -65,7 +51,6 @@ impl CanvasWrapper {
         self.draw();
     }
 
-    #[cfg_attr(feature = "canvas", allow(unused_variables))]
     pub fn resized(&mut self, width: u32, height: u32) {
         if let Some(canvas) = &self.canvas_element {
             canvas.set_width(width);
@@ -75,7 +60,7 @@ impl CanvasWrapper {
             if #[cfg(feature = "canvas")] {
                 self.draw();
             } else {
-                if let Some(graphics) = &mut self.graphics {
+                if let Some(graphics) = self.backend.as_mut() {
                     let new_width = width.max(1);
                     let new_height = height.max(1);
                     graphics.surface_config.width = new_width;
@@ -103,14 +88,14 @@ impl CanvasWrapper {
     fn draw(&mut self) {
         cfg_if::cfg_if! {
             if #[cfg(feature = "canvas")] {
-                if let Some(context) = &self.context {
+                if let Some(context) = &self.backend {
                     if let Some(canvas) = &self.canvas_element {
                         context.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
                         super::draw_canvas(context, &self.objects);
                     }
                 }
             } else {
-                if let Some(graphics) = &mut self.graphics {
+                if let Some(graphics) = self.backend.as_mut() {
                     super::draw_wgpu(graphics, &self.objects);
                 }
             }

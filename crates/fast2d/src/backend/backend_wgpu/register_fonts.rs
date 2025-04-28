@@ -1,13 +1,8 @@
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 use std::sync::Mutex;
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 use glyphon::FontSystem;
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 use web_sys::wasm_bindgen::JsValue;
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 use crate::backend::backend_wgpu::{FONT_SYSTEM, FontSystemInitError};
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), FontSystemInitError> {
     if fonts.is_empty() {
         return Err(FontSystemInitError::NoFontsProvided);
