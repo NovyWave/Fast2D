@@ -1,3 +1,5 @@
+pub mod register_fonts;
+
 // Canvas backend implementation and related types
 #[cfg(feature = "canvas")]
 use web_sys::wasm_bindgen::UnwrapThrowExt;

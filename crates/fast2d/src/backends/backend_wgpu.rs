@@ -1,4 +1,5 @@
 // WGPU/WebGL backend implementation and related types
+pub mod register_fonts;
 
 #[cfg(any(feature = "webgl", feature = "webgpu"))]
 use {

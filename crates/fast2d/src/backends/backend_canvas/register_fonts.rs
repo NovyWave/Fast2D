@@ -1,47 +1,11 @@
-#[cfg(not(feature = "canvas"))]
-use std::sync::Mutex;
-#[cfg(not(feature = "canvas"))]
-use glyphon::FontSystem;
-#[cfg(not(feature = "canvas"))]
-use web_sys::wasm_bindgen::JsValue;
 #[cfg(feature = "canvas")]
 use web_sys::{window, FontFace, FontFaceDescriptors};
 #[cfg(feature = "canvas")]
 use ttf_parser::{Face, name_id};
-#[cfg(not(feature = "canvas"))]
-use crate::backends::backend_wgpu::{FONT_SYSTEM, FontSystemInitError};
-
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
-/// Registers font data for use in Fast2D text rendering (WebGL/WebGPU only).
-/// This should be called before any text rendering, and before creating canvases.
-/// On backends that do not require explicit font registration, this function is not available.
-pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), FontSystemInitError> {
-    if fonts.is_empty() {
-        return Err(FontSystemInitError::NoFontsProvided);
-    }
-    let mut font_system = FontSystem::new();
-    let db = font_system.db_mut();
-    for data in fonts {
-        db.load_font_data(data.clone());
-    }
-    // Validate that a default font is available
-    if db.faces().next().is_none() {
-        #[cfg(target_arch = "wasm32")]
-        web_sys::console::warn_1(&JsValue::from_str(
-            "Warning: No valid font loaded. The chosen font may not be available."
-        ));
-        return Err(FontSystemInitError::DatabaseError("No valid font loaded".to_string()));
-    }
-    FONT_SYSTEM.set(Mutex::new(font_system))
-        .map_err(|_| {
-            web_sys::console::warn_1(&JsValue::from_str("Warning: FontSystem already initialized."));
-            FontSystemInitError::AlreadyInitialized
-        })
-}
-
 #[cfg(feature = "canvas")]
 use web_sys::wasm_bindgen::JsValue;
 
+// ...existing code...
 #[cfg(feature = "canvas")]
 pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), String> {
     let win = window().ok_or("No window")?;
@@ -96,3 +60,4 @@ pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), String> {
     }
     Ok(())
 }
+// ...existing code...

@@ -50,10 +50,13 @@ pub enum Object2d {
     Line(Line),
 }
 
-// --- CanvasWrapper moved to canvas_wrapper.rs ---
 mod canvas_wrapper;
 pub use canvas_wrapper::CanvasWrapper;
-mod register_fonts;
-pub use register_fonts::register_fonts;
 mod fetch_file;
 pub use fetch_file::fetch_file;
+
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
+pub use crate::backends::backend_wgpu::register_fonts::register_fonts;
+
+#[cfg(feature = "canvas")]
+pub use crate::backends::backend_canvas::register_fonts::register_fonts;
