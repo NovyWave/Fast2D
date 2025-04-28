@@ -182,4 +182,25 @@ impl Family {
     }
 }
 
+#[cfg(not(feature = "canvas"))]
+impl From<&crate::Family> for FamilyOwned {
+    fn from(family: &crate::Family) -> Self {
+        match family {
+            crate::Family::Name(name) => FamilyOwned::Name(name.clone().into()),
+            crate::Family::SansSerif => FamilyOwned::SansSerif,
+            crate::Family::Serif => FamilyOwned::Serif,
+            crate::Family::Monospace => FamilyOwned::Monospace,
+            crate::Family::Cursive => FamilyOwned::Cursive,
+            crate::Family::Fantasy => FamilyOwned::Fantasy,
+        }
+    }
+}
+
+#[cfg(not(feature = "canvas"))]
+impl From<crate::Family> for FamilyOwned {
+    fn from(family: crate::Family) -> Self {
+        Self::from(&family)
+    }
+}
+
 // Ensure no duplicate definitions remain below this line

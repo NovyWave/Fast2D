@@ -9,7 +9,7 @@ use web_sys::{window, FontFace, FontFaceDescriptors};
 #[cfg(feature = "canvas")]
 use ttf_parser::{Face, name_id};
 #[cfg(not(feature = "canvas"))]
-use crate::{FONT_SYSTEM, FontSystemInitError};
+use crate::backends::backend_wgpu::{FONT_SYSTEM, FontSystemInitError};
 
 #[cfg(any(feature = "webgl", feature = "webgpu"))]
 /// Registers font data for use in Fast2D text rendering (WebGL/WebGPU only).
