@@ -3,19 +3,37 @@ use web_sys::wasm_bindgen::JsCast;
 use web_sys::{window, Response};
 use web_sys::js_sys::Uint8Array;
 
+/// Fetch a file from the given URL and return its bytes.
 pub async fn fetch_file(url: &str) -> Result<Vec<u8>, String> {
-    let win = window().ok_or("No window")?;
-    let resp_value = JsFuture::from(win.fetch_with_str(url))
+    if url.is_empty() {
+        return Err("URL is empty".to_string());
+    }
+    // Get the browser window
+    let browser_window = window().ok_or("No window")?;
+
+    // Start the fetch and await the response
+    let fetch_promise = browser_window.fetch_with_str(url);
+    let fetch_response_jsvalue = JsFuture::from(fetch_promise)
         .await
-        .map_err(|_| "fetch failed".to_string())?;
-    let resp: Response = resp_value.dyn_into().map_err(|_| "response cast failed".to_string())?;
-    let buffer_promise = resp.array_buffer().map_err(|_| "array_buffer failed".to_string())?;
-    let buffer_value = JsFuture::from(buffer_promise)
+        .map_err(|error| format!("fetch failed for '{url}': {error:?}"))?;
+    let response: Response = fetch_response_jsvalue
+        .dyn_into()
+        .map_err(|error| format!("response cast failed for '{url}': {error:?}"))?;
+
+    // Get the ArrayBuffer from the response
+    let array_buffer_promise = response
+        .array_buffer()
+        .map_err(|error| format!("array_buffer failed for '{url}': {error:?}"))?;
+    let array_buffer_jsvalue = JsFuture::from(array_buffer_promise)
         .await
-        .map_err(|_| "array_buffer promise failed".to_string())?;
-    let buffer = buffer_value.dyn_into::<web_sys::js_sys::ArrayBuffer>().map_err(|_| "buffer cast failed".to_string())?;
-    let u8arr = Uint8Array::new(&buffer);
-    let mut bytes = vec![0u8; u8arr.length() as usize];
-    u8arr.copy_to(&mut bytes[..]);
+        .map_err(|error| format!("array_buffer promise failed for '{url}': {error:?}"))?;
+    let array_buffer = array_buffer_jsvalue
+        .dyn_into::<web_sys::js_sys::ArrayBuffer>()
+        .map_err(|error| format!("buffer cast failed for '{url}': {error:?}"))?;
+
+    // Convert ArrayBuffer to Vec<u8>
+    let uint8_array = Uint8Array::new(&array_buffer);
+    let mut bytes = vec![0u8; uint8_array.length() as usize];
+    uint8_array.copy_to(&mut bytes);
     Ok(bytes)
 }
