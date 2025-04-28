@@ -39,7 +39,7 @@ impl Line {
     }
 
     pub fn color(mut self, r: u8, g: u8, b: u8, a: f32) -> Self {
-        self.color = Color::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, a);
+        self.color = Color::new(r, g, b, a);
         self
     }
 }
