@@ -1,15 +1,11 @@
-// Conditionally import lyon Point
-#[cfg(not(feature = "canvas"))]
-use lyon::math::Point as LyonPoint;
-// Import shared Point and Color
-use super::types::{Point, Color};
-use crate::Object2d;
+use crate::backend::{Point, Color};
+use super::Object2d;
 
 #[derive(Debug, Clone)]
 pub struct Line {
-    pub(crate) points: Vec<Point>, // Use shared Point
+    pub(crate) points: Vec<Point>,
     pub(crate) width: f32,
-    pub(crate) color: Color, // Use shared Color
+    pub(crate) color: Color,
 }
 
 impl Default for Line {
@@ -17,7 +13,7 @@ impl Default for Line {
         Self {
             points: Vec::new(),
             width: 1.0,
-            color: Color::WHITE, // Default to white
+            color: Color::default(),
         }
     }
 }
@@ -27,13 +23,11 @@ impl Line {
         Self::default()
     }
 
-    // Modify points to accept slice of tuples
     pub fn points(mut self, points_tuples: &[(f32, f32)]) -> Self {
-        self.points = points_tuples.iter().map(|(x, y)| Point::new(*x, *y)).collect();
+        self.points = points_tuples.iter().copied().map(|(x, y)| Point { x, y }).collect();
         self
     }
 
-    // Keep add_point for convenience
     pub fn add_point(mut self, point: Point) -> Self {
         self.points.push(point);
         self
@@ -44,7 +38,6 @@ impl Line {
         self
     }
 
-    // Modify color to accept f32 alpha
     pub fn color(mut self, r: u8, g: u8, b: u8, a: f32) -> Self {
         self.color = Color::from_u8(r, g, b, (a.clamp(0.0, 1.0) * 255.0) as u8);
         self

@@ -4,6 +4,9 @@ pub use register_fonts::register_fonts;
 mod canvas_wrapper;
 pub use canvas_wrapper::CanvasWrapper;
 
+mod color;
+pub use color::Color;
+
 use {
     lyon::path::{Path, Winding},
     lyon::path::builder::BorderRadii as LyonBorderRadii,

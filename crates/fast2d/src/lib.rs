@@ -15,7 +15,13 @@ compile_error!("One rendering backend feature ('webgl', 'webgpu', or 'canvas') m
 // --- End of compile-time checks ---
 
 mod backend;
-pub use backend::register_fonts; // Re-export register_fonts function
+pub use backend::{register_fonts, CanvasWrapper};
+
+mod fetch_file;
+pub use fetch_file::fetch_file;
+
+pub mod object2d;
+pub use object2d::*;
 
 // --- Conditional Imports ---
 // WGPU/WebGL backend moved to backends/backend_wgpu.rs
@@ -25,32 +31,6 @@ pub use crate::backend::{
 };
 
 
-// --- Shared Structs/Enums ---
-// Declare the object_2d module and re-export structs (shared)
-mod object2d;
-pub use object2d::Text;
-pub use object2d::Rectangle;
-pub use object2d::Circle;
-pub use object2d::Line;
-pub use object2d::types::{Color, Point, Size, BorderRadii as ObjBorderRadii}; // Re-export shared types
-pub use object2d::Family;
-pub use object2d::FontWeight;
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
-pub use object2d::FamilyOwned; // Re-export conditionally
-
-// Enum definition remains here (shared)
-#[derive(Debug, Clone)]
-pub enum Object2d {
-    Text(Text),
-    Rectangle(Rectangle),
-    Circle(Circle),
-    Line(Line),
-}
-
-pub use backend::CanvasWrapper;
-
-mod fetch_file;
-pub use fetch_file::fetch_file;
 
 

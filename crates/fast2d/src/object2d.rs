@@ -1,5 +1,3 @@
-pub mod types;
-
 mod text;
 pub use text::{Text, FontWeight, Family};
 
@@ -10,7 +8,13 @@ mod circle;
 pub use circle::Circle;
 
 mod line; 
-pub use line::Line; 
+pub use line::Line;
 
-#[cfg(not(feature = "canvas"))]
-pub use types::FamilyOwned; // Conditionally re-export FamilyOwned
+// Enum definition remains here (shared)
+#[derive(Debug, Clone)]
+pub enum Object2d {
+    Text(Text),
+    Rectangle(Rectangle),
+    Circle(Circle),
+    Line(Line),
+}

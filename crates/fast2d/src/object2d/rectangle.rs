@@ -1,5 +1,5 @@
-use super::types::{Point, Size, Color, BorderRadii};
-use crate::Object2d;
+use crate::backend::{Point, Size, Color, BorderRadii};
+use super::Object2d;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Rectangle {
@@ -16,7 +16,7 @@ impl Default for Rectangle {
         Self {
             position: Point::default(),
             size: Size::default(),
-            color: Color::WHITE,
+            color: Color::default(),
             border_radii: BorderRadii::default(),
             border_width: None,
             border_color: None,
@@ -30,16 +30,15 @@ impl Rectangle {
     }
 
     pub fn position(mut self, x: f32, y: f32) -> Self {
-        self.position = Point::new(x, y);
+        self.position = Point { x, y };
         self
     }
 
     pub fn size(mut self, width: f32, height: f32) -> Self {
-        self.size = Size::new(width, height);
+        self.size = Size { width, height };
         self
     }
 
-    // Modify color to accept f32 alpha
     pub fn color(mut self, r: u8, g: u8, b: u8, a: f32) -> Self {
         self.color = Color::from_u8(r, g, b, (a.clamp(0.0, 1.0) * 255.0) as u8);
         self
@@ -65,7 +64,6 @@ impl Rectangle {
         self.border_radii(top_left, top_right, bottom_left, bottom_right)
     }
 
-    // Modify border to accept f32 alpha
     pub fn border(mut self, width: f32, r: u8, g: u8, b: u8, a: f32) -> Self {
         self.border_width = Some(width.max(0.0));
         self.border_color = Some(Color::from_u8(r, g, b, (a.clamp(0.0, 1.0) * 255.0) as u8));
@@ -79,8 +77,8 @@ impl Rectangle {
     }
 }
 
-impl From<Rectangle> for crate::Object2d {
+impl From<Rectangle> for Object2d {
     fn from(rect: Rectangle) -> Self {
-        crate::Object2d::Rectangle(rect)
+        Object2d::Rectangle(rect)
     }
 }

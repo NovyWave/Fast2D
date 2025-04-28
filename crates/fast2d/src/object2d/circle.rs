@@ -1,5 +1,5 @@
-use super::types::{Point, Color};
-use crate::Object2d;
+use crate::backend::{Point, Color};
+use super::Object2d;
 
 #[derive(Clone, Debug)]
 pub struct Circle {
@@ -10,13 +10,25 @@ pub struct Circle {
     pub(crate) border_color: Option<Color>,
 }
 
+impl Default for Circle {
+    fn default() -> Self {
+        Self {
+            center: Point::default(),
+            radius: 0.0,
+            color: Color::default(),
+            border_width: None,
+            border_color: None,
+        }
+    }
+}
+
 impl Circle {
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn center(mut self, x: f32, y: f32) -> Self {
-        self.center = Point::new(x, y);
+        self.center = Point { x, y };
         self
     }
 
@@ -25,7 +37,6 @@ impl Circle {
         self
     }
 
-    // Modify color to accept f32 alpha
     pub fn color(mut self, r: u8, g: u8, b: u8, a: f32) -> Self {
         self.color = Color::from_u8(r, g, b, (a.clamp(0.0, 1.0) * 255.0) as u8);
         self
@@ -36,7 +47,6 @@ impl Circle {
         self
     }
 
-    // Modify border to accept f32 alpha
     pub fn border(mut self, width: f32, r: u8, g: u8, b: u8, a: f32) -> Self {
         self.border_width = Some(width.max(0.0));
         self.border_color = Some(Color::from_u8(r, g, b, (a.clamp(0.0, 1.0) * 255.0) as u8));
@@ -47,18 +57,6 @@ impl Circle {
         self.border_width = Some(width.max(0.0));
         self.border_color = Some(Color::new(r, g, b, a));
         self
-    }
-}
-
-impl Default for Circle {
-    fn default() -> Self {
-        Self {
-            center: Point::default(),
-            radius: 0.0,
-            color: Color::WHITE,
-            border_width: None,
-            border_color: None,
-        }
     }
 }
 

@@ -1,21 +1,9 @@
 use std::borrow::Cow;
-use super::types::Color;
+use crate::backend::Color;
+use super::Object2d;
 
 mod family;
 pub use family::Family;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FontWeight {
-    Thin,
-    ExtraLight,
-    Light,
-    Regular,
-    Medium,
-    SemiBold,
-    Bold,
-    ExtraBold,
-    Black,
-}
 
 #[derive(Debug, Clone)]
 pub struct Text {
@@ -24,8 +12,8 @@ pub struct Text {
     pub(crate) top: f32,
     pub(crate) font_size: f32,
     pub(crate) line_height_multiplier: f32,
-    pub(crate) color: Color, // Use shared Color type
-    pub(crate) family: Family, // Always use Family, no conditional compilation
+    pub(crate) color: Color,
+    pub(crate) family: Family,
     pub(crate) width: f32,
     pub(crate) height: f32,
     pub(crate) italic: bool,
@@ -40,7 +28,7 @@ impl Default for Text {
             top: 0.0,
             font_size: 16.0,
             line_height_multiplier: 1.0,
-            color: Color::WHITE,
+            color: Color::default(),
             family: Family::sans_serif(),
             width: f32::MAX,
             height: f32::MAX,
@@ -72,17 +60,15 @@ impl Text {
     }
 
     pub fn line_height(mut self, multiplier: f32) -> Self {
-        self.line_height_multiplier = multiplier.max(0.0); // Ensure non-negative
+        self.line_height_multiplier = multiplier.max(0.0);
         self
     }
 
-    // Update color method to use shared Color::from_u8
     pub fn color(mut self, r: u8, g: u8, b: u8, a: f32) -> Self {
         self.color = Color::from_u8(r, g, b, (a.clamp(0.0, 1.0) * 255.0) as u8);
         self
     }
 
-    // Update color method to use shared Color::new (f32 version)
     pub fn color_f32(mut self, r: f32, g: f32, b: f32, a: f32) -> Self {
         self.color = Color::new(r, g, b, a);
         self
@@ -110,8 +96,21 @@ impl Text {
     }
 }
 
-impl From<Text> for crate::Object2d {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FontWeight {
+    Thin,
+    ExtraLight,
+    Light,
+    Regular,
+    Medium,
+    SemiBold,
+    Bold,
+    ExtraBold,
+    Black,
+}
+
+impl From<Text> for Object2d {
     fn from(text: Text) -> Self {
-        crate::Object2d::Text(text)
+        Object2d::Text(text)
     }
 }
