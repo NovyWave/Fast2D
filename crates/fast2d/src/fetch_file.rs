@@ -1,9 +1,9 @@
-pub async fn fetch_file(url: &str) -> Result<Vec<u8>, String> {
-    use wasm_bindgen_futures::JsFuture;
-    use web_sys::wasm_bindgen::JsCast;
-    use web_sys::{window, Response};
-    use web_sys::js_sys::Uint8Array;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::wasm_bindgen::JsCast;
+use web_sys::{window, Response};
+use web_sys::js_sys::Uint8Array;
 
+pub async fn fetch_file(url: &str) -> Result<Vec<u8>, String> {
     let win = window().ok_or("No window")?;
     let resp_value = JsFuture::from(win.fetch_with_str(url))
         .await

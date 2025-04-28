@@ -1,6 +1,9 @@
 mod register_fonts;
 pub use register_fonts::register_fonts;
 
+mod canvas_wrapper;
+pub use canvas_wrapper::CanvasWrapper;
+
 use web_sys::wasm_bindgen::UnwrapThrowExt;
 
 pub(crate) fn draw_canvas(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]) {

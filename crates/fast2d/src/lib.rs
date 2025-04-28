@@ -24,9 +24,6 @@ pub use crate::backend::{
     Graphics, create_graphics, draw_wgpu, FONT_SYSTEM, FontSystemInitError, CanvasUniforms, ColoredVertex, font_weight_to_glyphon
 };
 
-// Canvas backend moved to backends/backend_canvas.rs
-#[cfg(feature = "canvas")]
-pub(crate) use crate::backend::draw_canvas;
 
 // --- Shared Structs/Enums ---
 // Declare the object_2d module and re-export structs (shared)
@@ -51,8 +48,8 @@ pub enum Object2d {
     Line(Line),
 }
 
-mod canvas_wrapper;
-pub use canvas_wrapper::CanvasWrapper;
+pub use backend::CanvasWrapper;
+
 mod fetch_file;
 pub use fetch_file::fetch_file;
 
