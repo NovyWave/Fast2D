@@ -1,4 +1,5 @@
-pub mod register_fonts;
+mod register_fonts;
+pub use register_fonts::register_fonts;
 
 // Canvas backend implementation and related types
 #[cfg(feature = "canvas")]

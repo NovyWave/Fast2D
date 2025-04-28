@@ -7,7 +7,7 @@ use web_sys::wasm_bindgen::UnwrapThrowExt;
 #[cfg(feature = "canvas")]
 use web_sys::wasm_bindgen::JsCast;
 #[cfg(not(feature = "canvas"))]
-use crate::backends::backend_wgpu::Graphics;
+use crate::backend::Graphics;
 
 /// CanvasWrapper manages a collection of 2D objects and the associated canvas element/context/graphics.
 pub struct CanvasWrapper {
@@ -85,7 +85,7 @@ impl CanvasWrapper {
                         label: Some("MSAA Texture"),
                         size: wgpu::Extent3d { width: new_width, height: new_height, depth_or_array_layers: 1 },
                         mip_level_count: 1,
-                        sample_count: crate::backends::backend_wgpu::MSAA_SAMPLE_COUNT,
+                        sample_count: crate::backend::MSAA_SAMPLE_COUNT,
                         dimension: wgpu::TextureDimension::D2,
                         format: graphics.surface_config.format,
                         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,

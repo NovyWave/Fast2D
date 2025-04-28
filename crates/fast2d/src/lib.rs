@@ -14,18 +14,19 @@ compile_error!("One rendering backend feature ('webgl', 'webgpu', or 'canvas') m
 
 // --- End of compile-time checks ---
 
-mod backends;
+mod backend;
+pub use backend::register_fonts; // Re-export register_fonts function
 
 // --- Conditional Imports ---
 // WGPU/WebGL backend moved to backends/backend_wgpu.rs
 #[cfg(any(feature = "webgl", feature = "webgpu"))]
-pub use crate::backends::backend_wgpu::{
+pub use crate::backend::{
     Graphics, create_graphics, draw_wgpu, FONT_SYSTEM, FontSystemInitError, CanvasUniforms, ColoredVertex, font_weight_to_glyphon
 };
 
 // Canvas backend moved to backends/backend_canvas.rs
 #[cfg(feature = "canvas")]
-pub(crate) use crate::backends::backend_canvas::draw_canvas;
+pub(crate) use crate::backend::draw_canvas;
 
 // --- Shared Structs/Enums ---
 // Declare the object_2d module and re-export structs (shared)
@@ -55,8 +56,4 @@ pub use canvas_wrapper::CanvasWrapper;
 mod fetch_file;
 pub use fetch_file::fetch_file;
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
-pub use crate::backends::backend_wgpu::register_fonts::register_fonts;
 
-#[cfg(feature = "canvas")]
-pub use crate::backends::backend_canvas::register_fonts::register_fonts;
