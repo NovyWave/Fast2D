@@ -13,18 +13,23 @@ readme = "../../README.md"
 wasm-bindgen-test = "0.3.50"
 
 [dependencies]
-cfg-if = "1.0"
-wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false, optional = true }
-glyphon = { version = "0.9.0", default-features = false, optional = true }
-lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", default-features = false, optional = true }
-bytemuck = { version = "*", features = ["derive"], default-features = false, optional = true }
-euclid = { version = "*", features = ["bytemuck"], default-features = false, optional = true }
-ttf-parser = { version = "0.25.1", features = ["std"], default-features = false, optional = true }
+# Core dependencies
+cfg-if = { version = "1.0" }
 wasm-bindgen-futures = { version = "0.4.50", features = ["std"], default-features = false }
+
+# Canvas feature dependencies
+ttf-parser = { version = "0.25.1", features = ["std"], default-features = false, optional = true }
 web-sys = { version = "0.3", default-features = false, optional = true, features = [
     "console",
     "Response",
 ]}
+
+# WebGL/WebGPU feature dependencies
+bytemuck = { version = "*", features = ["derive"], default-features = false, optional = true }
+euclid = { version = "*", features = ["bytemuck"], default-features = false, optional = true }
+glyphon = { version = "0.9.0", default-features = false, optional = true }
+lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", default-features = false, optional = true }
+wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false, optional = true }
 
 [features]
 default = []
