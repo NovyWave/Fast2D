@@ -15,18 +15,14 @@ compile_error!("One rendering backend feature ('webgl', 'webgpu', or 'canvas') m
 // --- End of compile-time checks ---
 
 // Correct the import for console
-use web_sys::{console, HtmlCanvasElement, wasm_bindgen::{UnwrapThrowExt, JsValue}};
-use cfg_if::cfg_if; // Use for conditional fields/logic
+use web_sys::wasm_bindgen::UnwrapThrowExt;
+#[cfg(feature = "canvas")]
+use web_sys::CanvasRenderingContext2d;
 
 // --- Conditional Imports ---
-#[cfg(feature = "canvas")]
-use web_sys::{CanvasRenderingContext2d, wasm_bindgen::JsCast}; // Add JsCast here
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 use {
-    // Use shared Point type instead of lyon::math::point directly in tessellation if possible,
-    // or convert within draw_wgpu. For now, keep lyon imports needed for tessellation.
-    lyon::math::point, // Keep for tessellation for now
     lyon::path::{Path, Winding},
     lyon::path::builder::BorderRadii as LyonBorderRadii, // Alias lyon's BorderRadii
     lyon::math::Box2D,
@@ -34,15 +30,19 @@ use {
     // Remove Color as WgpuColor
     wgpu::{Device, MultisampleState, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, BindGroupLayout, BindGroup, Buffer as WgpuBuffer, TextureViewDescriptor},
     wgpu::util::DeviceExt,
-    std::sync::{OnceLock, Mutex},
+    // Remove OnceLock, Mutex, FontSystem from here (they are now imported only where needed)
     // Remove FamilyOwned as GlyphonFamilyOwned
     glyphon::{
-        Cache, FontSystem, Shaping, Buffer as GlyphonBuffer,
+        Cache, Shaping, Buffer as GlyphonBuffer,
         SwashCache, TextAtlas, TextRenderer, Viewport, TextArea,
         Attrs, TextBounds, Resolution, Metrics, Family as GlyphonFamily, // Import GlyphonFamily
         ColorMode // Import ColorMode
     },
     bytemuck, // Import the crate itself
+    web_sys::HtmlCanvasElement,
+    web_sys::console,
+    web_sys::wasm_bindgen::JsValue,
+    lyon::math::point,
 };
 
 // --- Conditional Re-exports/Constants/Statics ---
@@ -50,13 +50,13 @@ use {
 // #[cfg(not(feature = "canvas"))]
 // pub use glyphon::Family;
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 const MSAA_SAMPLE_COUNT: u32 = 4;
 
-#[cfg(not(feature = "canvas"))]
-static FONT_SYSTEM: OnceLock<Mutex<FontSystem>> = OnceLock::new();
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
+pub static FONT_SYSTEM: std::sync::OnceLock<std::sync::Mutex<glyphon::FontSystem>> = std::sync::OnceLock::new();
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[derive(Debug)]
 pub enum FontSystemInitError {
     DatabaseError(String),
@@ -64,93 +64,8 @@ pub enum FontSystemInitError {
     NoFontsProvided,
 }
 
-#[cfg(any(feature = "webgl", feature = "webgpu"))]
-/// Registers font data for use in Fast2D text rendering (WebGL/WebGPU only).
-/// This should be called before any text rendering, and before creating canvases.
-/// On backends that do not require explicit font registration, this function is not available.
-pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), FontSystemInitError> {
-    if fonts.is_empty() {
-        return Err(FontSystemInitError::NoFontsProvided);
-    }
-    let mut font_system = FontSystem::new();
-    let db = font_system.db_mut();
-    for data in fonts {
-        db.load_font_data(data.clone());
-    }
-    // Validate that a default font is available
-    if db.faces().next().is_none() {
-        #[cfg(target_arch = "wasm32")]
-        web_sys::console::warn_1(&JsValue::from_str(
-            "Warning: No valid font loaded. The chosen font may not be available."
-        ));
-        return Err(FontSystemInitError::DatabaseError("No valid font loaded".to_string()));
-    }
-    FONT_SYSTEM.set(Mutex::new(font_system))
-        .map_err(|_| {
-            console::warn_1(&JsValue::from_str("Warning: FontSystem already initialized."));
-            FontSystemInitError::AlreadyInitialized
-        })
-}
-
-#[cfg(feature = "canvas")]
-pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), String> {
-    use web_sys::{window, FontFace, FontFaceDescriptors};
-    use ttf_parser::{Face, name_id};
-    let win = window().ok_or("No window")?;
-    let doc = win.document().ok_or("No document")?;
-    let fonts_set = doc.fonts();
-    for font_bytes in fonts {
-        let face = Face::parse(font_bytes, 0).map_err(|_| "Failed to parse font data")?;
-        // Extract family, weight, and style
-        let mut family = None;
-        let mut weight = None;
-        let mut style = None;
-        for name in face.names() {
-            if name.name_id == name_id::FAMILY && family.is_none() {
-                family = name.to_string();
-            }
-            if name.name_id == name_id::SUBFAMILY && style.is_none() {
-                let subfamily = name.to_string().unwrap_or_default().to_lowercase();
-                if subfamily.contains("italic") {
-                    style = Some("italic");
-                } else {
-                    style = Some("normal");
-                }
-                if subfamily.contains("bold") {
-                    weight = Some("bold");
-                } else if subfamily.contains("light") {
-                    weight = Some("300");
-                } else if subfamily.contains("medium") {
-                    weight = Some("500");
-                } else if subfamily.contains("semibold") {
-                    weight = Some("600");
-                } else if subfamily.contains("black") {
-                    weight = Some("900");
-                } else {
-                    weight = Some("400");
-                }
-            }
-        }
-        let family = family.unwrap_or_else(|| {
-            web_sys::console::warn_1(&JsValue::from_str("Warning: Could not extract font family name from font data. Using 'CustomFont'."));
-            "CustomFont".to_string()
-        });
-        let style = style.unwrap_or("normal");
-        let weight = weight.unwrap_or("400");
-        let buffer = web_sys::js_sys::Uint8Array::from(font_bytes.as_slice());
-        let array_buffer = buffer.buffer();
-        let descriptors = FontFaceDescriptors::new();
-        descriptors.set_style(style);
-        descriptors.set_weight(weight);
-        let font_face = FontFace::new_with_array_buffer_and_descriptors(&family, &array_buffer, &descriptors)
-            .map_err(|e| format!("FontFace error: {:?}", e))?;
-        fonts_set.add(&font_face).map_err(|e| format!("Add font error: {:?}", e))?;
-    }
-    Ok(())
-}
-
 // --- Conditional Structs ---
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct CanvasUniforms {
@@ -160,7 +75,7 @@ struct CanvasUniforms {
     _padding2: f32,
 }
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 struct ColoredVertex {
@@ -168,7 +83,7 @@ struct ColoredVertex {
     color: [f32; 4],
 }
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 impl ColoredVertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
         wgpu::VertexBufferLayout {
@@ -192,7 +107,7 @@ impl ColoredVertex {
     }
 }
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 #[allow(dead_code)]
 struct Graphics {
     device: Device,
@@ -222,7 +137,7 @@ pub use object_2d::types::{Color, Point, Size, BorderRadii as ObjBorderRadii}; /
 pub use object_2d::types::Family;
 pub use crate::object_2d::text::FontWeight;
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 pub use object_2d::FamilyOwned; // Re-export conditionally
 
 // Enum definition remains here (shared)
@@ -234,291 +149,14 @@ pub enum Object2d {
     Line(Line),
 }
 
-// --- CanvasWrapper with Conditional Backend ---
-pub struct CanvasWrapper {
-    objects: Vec<Object2d>,
-    canvas_element: Option<HtmlCanvasElement>, // Store the element itself
-
-    // Conditional backend state
-    #[cfg(feature = "canvas")]
-    context: Option<CanvasRenderingContext2d>,
-    #[cfg(not(feature = "canvas"))]
-    graphics: Option<Graphics>,
-}
-
-impl CanvasWrapper {
-    pub fn new() -> Self {
-        cfg_if! {
-            if #[cfg(feature = "canvas")] {
-                Self {
-                    objects: Vec::new(),
-                    canvas_element: None,
-                    context: None,
-                }
-            } else {
-                Self {
-                    objects: Vec::new(),
-                    canvas_element: None,
-                    graphics: None,
-                }
-            }
-        }
-    }
-
-    // Suppress unused variable warnings only when 'canvas' feature is active
-    #[cfg_attr(feature = "canvas", allow(unused_variables))]
-    pub async fn set_canvas(&mut self, canvas: HtmlCanvasElement) {
-        let width = canvas.width().max(1);
-        let height = canvas.height().max(1);
-        self.canvas_element = Some(canvas.clone());
-
-        cfg_if! {
-            if #[cfg(feature = "canvas")] {
-                // Get 2D rendering context
-                let context_object = canvas
-                    .get_context("2d")
-                    .unwrap_throw() // Handle potential errors
-                    .unwrap_throw() // Handle Option<Object>
-                    .dyn_into::<CanvasRenderingContext2d>() // JsCast is now in scope via conditional import
-                    .unwrap_throw(); // Handle incorrect type
-                self.context = Some(context_object);
-            } else {
-                // Initialize WGPU graphics (uses width, height)
-                self.graphics = Some(create_graphics(canvas, width, height).await);
-            }
-        }
-        self.draw(); // Initial draw
-    }
-
-    pub fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) {
-        updater(&mut self.objects);
-        self.draw();
-    }
-
-    // Suppress unused variable warnings only when 'canvas' feature is active
-    #[cfg_attr(feature = "canvas", allow(unused_variables))]
-    pub fn resized(&mut self, width: u32, height: u32) {
-        if let Some(canvas) = &self.canvas_element {
-            canvas.set_width(width);
-            canvas.set_height(height);
-        }
-        cfg_if! {
-            if #[cfg(feature = "canvas")] {
-                // For canvas, resizing the element externally is enough.
-                // We just need to redraw.
-                self.draw();
-            } else {
-                // WGPU requires reconfiguration (uses width, height)
-                if let Some(graphics) = &mut self.graphics {
-                    let new_width = width.max(1);
-                    let new_height = height.max(1);
-
-                    graphics.surface_config.width = new_width;
-                    graphics.surface_config.height = new_height;
-                    graphics.surface.configure(&graphics.device, &graphics.surface_config);
-
-                    // Recreate MSAA texture
-                    graphics.msaa_texture = graphics.device.create_texture(&wgpu::TextureDescriptor {
-                        label: Some("MSAA Texture"),
-                        size: wgpu::Extent3d { width: new_width, height: new_height, depth_or_array_layers: 1 },
-                        mip_level_count: 1,
-                        sample_count: MSAA_SAMPLE_COUNT,
-                        dimension: wgpu::TextureDimension::D2,
-                        format: graphics.surface_config.format,
-                        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                        view_formats: &[],
-                    });
-
-                    // Update viewport
-                    graphics.viewport.update(&graphics.queue, Resolution { width: new_width, height: new_height });
-
-                    // Update uniform buffer
-                    let uniforms = CanvasUniforms { width: new_width as f32, height: new_height as f32, _padding1: 0.0, _padding2: 0.0 };
-                    graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
-
-                    self.draw(); // Redraw after WGPU resize
-                }
-            }
-        }
-    }
-
-    fn draw(&mut self) {
-        cfg_if! {
-            if #[cfg(feature = "canvas")] {
-                if let Some(context) = &self.context {
-                    if let Some(canvas) = &self.canvas_element {
-                         // Clear canvas before drawing
-                         context.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
-                         draw_canvas(context, &self.objects);
-                    }
-                }
-            } else {
-                if let Some(graphics) = &mut self.graphics {
-                    draw_wgpu(graphics, &self.objects); // Call the WGPU draw function
-                }
-            }
-        }
-    }
-}
-
-// --- Canvas Backend Implementation ---
-#[cfg(feature = "canvas")]
-fn font_weight_to_css(weight: &crate::object_2d::text::FontWeight) -> &'static str {
-    use crate::object_2d::text::FontWeight::*;
-    match weight {
-        Thin => "100",
-        ExtraLight => "200",
-        Light => "300",
-        Regular => "400",
-        Medium => "500",
-        SemiBold => "600",
-        Bold => "bold",
-        ExtraBold => "800",
-        Black => "900",
-    }
-}
-
-#[cfg(feature = "canvas")]
-fn draw_canvas(ctx: &CanvasRenderingContext2d, objects: &[Object2d]) {
-    // Set default state (optional, but good practice)
-    // Use correct non-deprecated methods
-    ctx.set_fill_style_str("black"); // Default fill
-    ctx.set_stroke_style_str("black"); // Default stroke
-    ctx.set_line_width(1.0);
-
-    for obj in objects {
-        match obj {
-            Object2d::Rectangle(rect) => {
-                // Set fill color
-                let fill_color = rect.color.to_canvas_rgba();
-                // Use correct non-deprecated method
-                ctx.set_fill_style_str(&fill_color);
-
-                // TODO: Add rounded rectangle support if radii > 0 using path API
-                // For now, just draw a simple rectangle
-                ctx.fill_rect(
-                    rect.position.x as f64,
-                    rect.position.y as f64,
-                    rect.size.width as f64,
-                    rect.size.height as f64,
-                );
-
-                // Handle border
-                if let (Some(border_width), Some(border_color_val)) = (rect.border_width, rect.border_color) {
-                     if border_width > 0.0 && border_color_val.a > 0.0 {
-                         let stroke_color = border_color_val.to_canvas_rgba();
-                         // Use correct non-deprecated method
-                         ctx.set_stroke_style_str(&stroke_color);
-                         ctx.set_line_width(border_width as f64);
-                         ctx.stroke_rect(
-                             rect.position.x as f64,
-                             rect.position.y as f64,
-                             rect.size.width as f64,
-                             rect.size.height as f64,
-                         );
-                     }
-                 }
-            }
-            Object2d::Circle(circle) => {
-                ctx.begin_path();
-                ctx.arc(
-                    circle.center.x as f64,
-                    circle.center.y as f64,
-                    circle.radius as f64,
-                    0.0,
-                    std::f64::consts::PI * 2.0,
-                ).unwrap_throw(); // Error handling for arc
-
-                // Fill
-                if circle.color.a > 0.0 {
-                    let fill_color = circle.color.to_canvas_rgba();
-                    // Use correct non-deprecated method
-                    ctx.set_fill_style_str(&fill_color);
-                    ctx.fill();
-                }
-
-                // Border
-                if let (Some(border_width), Some(border_color_val)) = (circle.border_width, circle.border_color) {
-                     if border_width > 0.0 && border_color_val.a > 0.0 {
-                         let stroke_color = border_color_val.to_canvas_rgba();
-                         // Use correct non-deprecated method
-                         ctx.set_stroke_style_str(&stroke_color);
-                         ctx.set_line_width(border_width as f64);
-                         ctx.stroke(); // Stroke the path defined by arc
-                     }
-                 }
-                 // ctx.close_path(); // Not strictly necessary after fill/stroke for a circle arc
-            }
-            Object2d::Line(line) => {
-                 if line.points.len() >= 2 && line.color.a > 0.0 {
-                     let stroke_color = line.color.to_canvas_rgba();
-                     // Use correct non-deprecated method
-                     ctx.set_stroke_style_str(&stroke_color);
-                     ctx.set_line_width(line.width as f64);
-                     // TODO: Set line cap/join if needed (ctx.set_line_cap, ctx.set_line_join)
-
-                     ctx.begin_path();
-                     ctx.move_to(line.points[0].x as f64, line.points[0].y as f64);
-                     for i in 1..line.points.len() {
-                         ctx.line_to(line.points[i].x as f64, line.points[i].y as f64);
-                     }
-                     ctx.stroke(); // Stroke the defined path
-                 }
-            }
-            Object2d::Text(text) => {
-                if text.color.a > 0.0 {
-                    let fill_color = text.color.to_canvas_rgba();
-                    ctx.set_fill_style_str(&fill_color);
-                    let font_style = if text.italic { "italic" } else { "normal" };
-                    let font_weight = font_weight_to_css(&text.weight);
-                    let font_str = format!("{} {} {}px {}", font_style, font_weight, text.font_size, text.family);
-                    ctx.set_font(&font_str);
-
-                    let max_width = text.width;
-                    let line_height = text.font_size * text.line_height_multiplier;
-                    let words: Vec<&str> = text.text.split_whitespace().collect();
-                    let mut lines: Vec<String> = Vec::new();
-                    let mut current_line = String::new();
-
-                    for word in words {
-                        let test_line = if current_line.is_empty() {
-                            word.to_string()
-                        } else {
-                            format!("{} {}", current_line, word)
-                        };
-                        let metrics = ctx.measure_text(&test_line).unwrap_throw();
-                        if metrics.width() <= max_width as f64 || current_line.is_empty() {
-                            current_line = test_line;
-                        } else {
-                            lines.push(current_line);
-                            current_line = word.to_string();
-                        }
-                    }
-                    if !current_line.is_empty() {
-                        lines.push(current_line);
-                    }
-
-                    let mut y = text.top;
-                    for line in lines {
-                        let metrics = ctx.measure_text(&line).unwrap_throw();
-                        let ascent = metrics.actual_bounding_box_ascent();
-                        let font_box_ascent = metrics.font_bounding_box_ascent();
-                        let gap = font_box_ascent - ascent;
-                        let line_gap = if gap > 0.0 && gap < 1.0 { gap } else { 0.0 };
-                        ctx.fill_text(&line, text.left as f64, y as f64 + ascent + line_gap).unwrap_throw();
-                        y += line_height;
-                        if y > text.top + text.height {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+// --- CanvasWrapper moved to canvas_wrapper.rs ---
+mod canvas_wrapper;
+pub use canvas_wrapper::CanvasWrapper;
+mod register_fonts;
+pub use register_fonts::register_fonts;
 
 // --- WGPU/WebGL Backend Implementation ---
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> Graphics {
     let instance = wgpu::Instance::default();
     let surface = instance
@@ -757,7 +395,7 @@ async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> 
     }
 }
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
     let output = match gfx.surface.get_current_texture() {
         Ok(texture) => texture,
@@ -835,7 +473,7 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
                 }
                 // Optionally, log to stderr on non-wasm targets
                 #[cfg(not(target_arch = "wasm32"))]
-                eprintln!("Warning: Font family '{:?}' not found. Falling back to default.", text.family);
+                eprintln!("Warning: Font family '{:?}' not found. Falling back to default.");
             }
 
 
@@ -998,7 +636,7 @@ fn draw_wgpu(gfx: &mut Graphics, objects: &[Object2d]) {
     output.present();
 }
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 impl From<&crate::Family> for crate::FamilyOwned {
     fn from(family: &crate::Family) -> Self {
         match family {
@@ -1012,7 +650,7 @@ impl From<&crate::Family> for crate::FamilyOwned {
     }
 }
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 impl From<Family> for FamilyOwned {
     fn from(family: Family) -> Self {
         match family {
@@ -1026,7 +664,7 @@ impl From<Family> for FamilyOwned {
     }
 }
 
-#[cfg(not(feature = "canvas"))]
+#[cfg(any(feature = "webgl", feature = "webgpu"))]
 fn font_weight_to_glyphon(weight: crate::object_2d::text::FontWeight) -> glyphon::fontdb::Weight {
     use crate::object_2d::text::FontWeight::*;
     match weight {
@@ -1062,4 +700,142 @@ pub async fn fetch_file(url: &str) -> Result<Vec<u8>, String> {
     let mut bytes = vec![0u8; u8arr.length() as usize];
     u8arr.copy_to(&mut bytes[..]);
     Ok(bytes)
+}
+
+#[cfg(feature = "canvas")]
+pub(crate) fn draw_canvas(ctx: &CanvasRenderingContext2d, objects: &[Object2d]) {
+    // Set default state (optional, but good practice)
+    ctx.set_fill_style_str("black"); // Default fill
+    ctx.set_stroke_style_str("black"); // Default stroke
+    ctx.set_line_width(1.0);
+
+    for obj in objects {
+        match obj {
+            Object2d::Rectangle(rect) => {
+                // Set fill color
+                let fill_color = rect.color.to_canvas_rgba();
+                ctx.set_fill_style_str(&fill_color);
+                // TODO: Add rounded rectangle support if radii > 0 using path API
+                ctx.fill_rect(
+                    rect.position.x as f64,
+                    rect.position.y as f64,
+                    rect.size.width as f64,
+                    rect.size.height as f64,
+                );
+                // Handle border
+                if let (Some(border_width), Some(border_color_val)) = (rect.border_width, rect.border_color) {
+                    if border_width > 0.0 && border_color_val.a > 0.0 {
+                        let stroke_color = border_color_val.to_canvas_rgba();
+                        ctx.set_stroke_style_str(&stroke_color);
+                        ctx.set_line_width(border_width as f64);
+                        ctx.stroke_rect(
+                            rect.position.x as f64,
+                            rect.position.y as f64,
+                            rect.size.width as f64,
+                            rect.size.height as f64,
+                        );
+                    }
+                }
+            }
+            Object2d::Circle(circle) => {
+                ctx.begin_path();
+                ctx.arc(
+                    circle.center.x as f64,
+                    circle.center.y as f64,
+                    circle.radius as f64,
+                    0.0,
+                    std::f64::consts::PI * 2.0,
+                ).unwrap_throw();
+                // Fill
+                if circle.color.a > 0.0 {
+                    let fill_color = circle.color.to_canvas_rgba();
+                    ctx.set_fill_style_str(&fill_color);
+                    ctx.fill();
+                }
+                // Border
+                if let (Some(border_width), Some(border_color_val)) = (circle.border_width, circle.border_color) {
+                    if border_width > 0.0 && border_color_val.a > 0.0 {
+                        let stroke_color = border_color_val.to_canvas_rgba();
+                        ctx.set_stroke_style_str(&stroke_color);
+                        ctx.set_line_width(border_width as f64);
+                        ctx.stroke();
+                    }
+                }
+            }
+            Object2d::Line(line) => {
+                if line.points.len() >= 2 && line.color.a > 0.0 {
+                    let stroke_color = line.color.to_canvas_rgba();
+                    ctx.set_stroke_style_str(&stroke_color);
+                    ctx.set_line_width(line.width as f64);
+                    ctx.begin_path();
+                    ctx.move_to(line.points[0].x as f64, line.points[0].y as f64);
+                    for i in 1..line.points.len() {
+                        ctx.line_to(line.points[i].x as f64, line.points[i].y as f64);
+                    }
+                    ctx.stroke();
+                }
+            }
+            Object2d::Text(text) => {
+                if text.color.a > 0.0 {
+                    let fill_color = text.color.to_canvas_rgba();
+                    ctx.set_fill_style_str(&fill_color);
+                    let font_style = if text.italic { "italic" } else { "normal" };
+                    let font_weight = font_weight_to_css(&text.weight);
+                    let font_str = format!("{} {} {}px {}", font_style, font_weight, text.font_size, text.family);
+                    ctx.set_font(&font_str);
+                    let max_width = text.width;
+                    let line_height = text.font_size * text.line_height_multiplier;
+                    let words: Vec<&str> = text.text.split_whitespace().collect();
+                    let mut lines: Vec<String> = Vec::new();
+                    let mut current_line = String::new();
+                    for word in words {
+                        let test_line = if current_line.is_empty() {
+                            word.to_string()
+                        } else {
+                            format!("{} {}", current_line, word)
+                        };
+                        let metrics = ctx.measure_text(&test_line).unwrap_throw();
+                        if metrics.width() <= max_width as f64 || current_line.is_empty() {
+                            current_line = test_line;
+                        } else {
+                            lines.push(current_line);
+                            current_line = word.to_string();
+                        }
+                    }
+                    if !current_line.is_empty() {
+                        lines.push(current_line);
+                    }
+                    let mut y = text.top;
+                    for line in lines {
+                        let metrics = ctx.measure_text(&line).unwrap_throw();
+                        let ascent = metrics.actual_bounding_box_ascent();
+                        let font_box_ascent = metrics.font_bounding_box_ascent();
+                        let gap = font_box_ascent - ascent;
+                        let line_gap = if gap > 0.0 && gap < 1.0 { gap } else { 0.0 };
+                        ctx.fill_text(&line, text.left as f64, y as f64 + ascent + line_gap).unwrap_throw();
+                        y += line_height;
+                        if y > text.top + text.height {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "canvas")]
+fn font_weight_to_css(weight: &crate::object_2d::text::FontWeight) -> &'static str {
+    use crate::object_2d::text::FontWeight::*;
+    match weight {
+        Thin => "100",
+        ExtraLight => "200",
+        Light => "300",
+        Regular => "400",
+        Medium => "500",
+        SemiBold => "600",
+        Bold => "700",
+        ExtraBold => "800",
+        Black => "900",
+    }
 }
