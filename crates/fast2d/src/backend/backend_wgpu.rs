@@ -226,7 +226,7 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
 
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("Shape Shader"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("shaders/rectangle.wgsl").into()),
+        source: wgpu::ShaderSource::Wgsl(include_str!("backend_wgpu/object2d_shaders.wgsl").into()),
     });
     let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
         label: Some("Shape Pipeline Layout"),
@@ -500,8 +500,8 @@ pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     output.present();
 }
 
-pub fn font_weight_to_glyphon(weight: crate::object_2d::text::FontWeight) -> glyphon::fontdb::Weight {
-    use crate::object_2d::text::FontWeight::*;
+pub fn font_weight_to_glyphon(weight: crate::object2d::text::FontWeight) -> glyphon::fontdb::Weight {
+    use crate::object2d::text::FontWeight::*;
     match weight {
         Thin => glyphon::fontdb::Weight::THIN,
         ExtraLight => glyphon::fontdb::Weight::EXTRA_LIGHT,

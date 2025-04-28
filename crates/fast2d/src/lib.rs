@@ -27,17 +27,17 @@ pub use crate::backend::{
 
 // --- Shared Structs/Enums ---
 // Declare the object_2d module and re-export structs (shared)
-mod object_2d;
-pub use object_2d::text::Text;
-pub use object_2d::rectangle::Rectangle;
-pub use object_2d::circle::Circle;
-pub use object_2d::line::Line;
-pub use object_2d::types::{Color, Point, Size, BorderRadii as ObjBorderRadii}; // Re-export shared types
-pub use object_2d::types::Family;
-pub use crate::object_2d::text::FontWeight;
+mod object2d;
+pub use object2d::text::Text;
+pub use object2d::rectangle::Rectangle;
+pub use object2d::circle::Circle;
+pub use object2d::line::Line;
+pub use object2d::types::{Color, Point, Size, BorderRadii as ObjBorderRadii}; // Re-export shared types
+pub use object2d::types::Family;
+pub use crate::object2d::text::FontWeight;
 
 #[cfg(any(feature = "webgl", feature = "webgpu"))]
-pub use object_2d::FamilyOwned; // Re-export conditionally
+pub use object2d::FamilyOwned; // Re-export conditionally
 
 // Enum definition remains here (shared)
 #[derive(Debug, Clone)]
