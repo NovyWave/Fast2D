@@ -34,7 +34,7 @@ impl Line {
     }
 
     pub fn width(mut self, width: f32) -> Self {
-        self.width = width.max(0.0); // Ensure non-negative
+        self.width = width.max(0.0);
         self
     }
 

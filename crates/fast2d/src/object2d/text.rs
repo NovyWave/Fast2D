@@ -29,7 +29,7 @@ impl Default for Text {
             font_size: 16.0,
             line_height_multiplier: 1.0,
             color: Color::default(),
-            family: Family::sans_serif(),
+            family: Family::SansSerif,
             width: f32::MAX,
             height: f32::MAX,
             italic: false,
@@ -91,6 +91,12 @@ impl Text {
     }
 }
 
+impl From<Text> for Object2d {
+    fn from(text: Text) -> Self {
+        Object2d::Text(text)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FontWeight {
     Thin,
@@ -102,10 +108,4 @@ pub enum FontWeight {
     Bold,
     ExtraBold,
     Black,
-}
-
-impl From<Text> for Object2d {
-    fn from(text: Text) -> Self {
-        Object2d::Text(text)
-    }
 }

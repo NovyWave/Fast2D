@@ -10,7 +10,6 @@ pub use circle::Circle;
 mod line; 
 pub use line::Line;
 
-// Enum definition remains here (shared)
 #[derive(Debug, Clone)]
 pub enum Object2d {
     Text(Text),
