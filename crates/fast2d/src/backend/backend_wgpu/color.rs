@@ -17,24 +17,23 @@ impl Color {
         Self { r, g, b, a: a.clamp(0.0, 1.0) }
     }
 
-    fn srgb_to_linear(c: f32) -> f32 {
-        if c <= 0.04045 {
-            c / 12.92
-        } else {
-            ((c + 0.055) / 1.055).powf(2.4)
+    pub(crate) fn to_linear(&self) -> [f32; 4] {
+        fn srgb_to_linear(c: f32) -> f32 {
+            if c <= 0.04045 {
+                c / 12.92
+            } else {
+                ((c + 0.055) / 1.055).powf(2.4)
+            }
         }
-    }
-
-    pub fn to_linear(&self) -> [f32; 4] {
         [
-            Self::srgb_to_linear(self.r as f32 / 255.0),
-            Self::srgb_to_linear(self.g as f32 / 255.0),
-            Self::srgb_to_linear(self.b as f32 / 255.0),
+            srgb_to_linear(self.r as f32 / 255.0),
+            srgb_to_linear(self.g as f32 / 255.0),
+            srgb_to_linear(self.b as f32 / 255.0),
             self.a,
         ]
     }
 
-    pub fn to_glyphon_color(&self) -> glyphon::Color {
+    pub(crate) fn to_glyphon_color(&self) -> glyphon::Color {
         glyphon::Color::rgba(
             self.r,
             self.g,

@@ -2,7 +2,6 @@ use crate::Object2d;
 use web_sys::{HtmlCanvasElement, CanvasRenderingContext2d};
 use web_sys::wasm_bindgen::{UnwrapThrowExt, JsCast};
 
-/// CanvasWrapper manages a collection of 2D objects and the associated canvas element/context/graphics.
 pub struct CanvasWrapper {
     objects: Vec<Object2d>,
     canvas_element: Option<HtmlCanvasElement>,

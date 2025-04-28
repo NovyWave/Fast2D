@@ -18,11 +18,7 @@ impl Color {
     }
 
     pub(crate) fn to_canvas_rgba(&self) -> String {
-        format!("rgba({}, {}, {}, {})",
-            self.r,
-            self.g,
-            self.b,
-            self.a
-        )
+        let Self { r, g, b, a } = self;
+        format!("rgba({r}, {g}, {b}, {a})")
     }
 }

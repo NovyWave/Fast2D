@@ -2,7 +2,6 @@ use crate::Object2d;
 use web_sys::HtmlCanvasElement;
 use crate::backend::Graphics;
 
-/// CanvasWrapper manages a collection of 2D objects and the associated canvas element/graphics for WGPU/WebGL.
 pub struct CanvasWrapper {
     objects: Vec<Object2d>,
     canvas_element: Option<HtmlCanvasElement>,
