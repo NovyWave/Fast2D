@@ -36,7 +36,6 @@ fn example_rectangle() -> fast2d::CanvasWrapper {
         objects.push(
             fast2d::Rectangle::new()
                 .position(50., 50.)
-                .inner_border(30., 255, 255, 0, 1.0)
                 .size(200., 150.)
                 .color(50, 0, 100, 1.0)
                 .into(),
@@ -63,7 +62,6 @@ fn example_face() -> fast2d::CanvasWrapper {
         objects.push(
             fast2d::Circle::new()
                 .center(175., 205.)
-                .inner_border(30., 255, 255, 0, 1.0)
                 .radius(100.)
                 .color(0, 128, 0, 1.0)
                 .into(),

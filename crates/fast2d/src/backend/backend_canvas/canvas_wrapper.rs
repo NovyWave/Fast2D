@@ -46,7 +46,7 @@ impl CanvasWrapper {
         if let Some(context) = &self.context {
             if let Some(canvas) = &self.canvas_element {
                 context.clear_rect(0.0, 0.0, canvas.width() as f64, canvas.height() as f64);
-                super::draw_canvas(context, &self.objects);
+                super::draw(context, &self.objects);
             }
         }
     }

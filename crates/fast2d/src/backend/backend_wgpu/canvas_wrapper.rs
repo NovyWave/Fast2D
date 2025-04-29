@@ -43,7 +43,7 @@ impl CanvasWrapper {
 
     fn draw(&mut self) {
         if let Some(graphics) = self.graphics.as_mut() {
-            super::draw_wgpu(graphics, &self.objects);
+            super::draw(graphics, &self.objects);
         }
     }
 }
