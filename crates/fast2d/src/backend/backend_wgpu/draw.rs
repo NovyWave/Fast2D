@@ -135,11 +135,11 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                 }
                 let fill_path = builder.build();
                 if rect.color.a > 0.0 && fill_box.size().width > 0.0 && fill_box.size().height > 0.0 {
-                    fill_tessellator.tessellate_path(&fill_path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
+                    fill_tessellator.tessellate_path(&fill_path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap_throw();
                 }
                 // Draw inner border
                 if has_border && fill_box.size().width > 0.0 && fill_box.size().height > 0.0 {
-                    let linear_border_color = rect.border_color.unwrap().to_linear();
+                    let linear_border_color = rect.border_color.unwrap_throw().to_linear();
                     let border_box = Box2D::new(
                         point(rect.position.x + border_width / 2.0, rect.position.y + border_width / 2.0),
                         point(rect.position.x + rect.size.width - border_width / 2.0, rect.position.y + rect.size.height - border_width / 2.0),
@@ -157,7 +157,7 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                     }
                     let border_path = border_builder.build();
                     let options = StrokeOptions::default().with_line_width(border_width);
-                    stroke_tessellator.tessellate_path(&border_path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
+                    stroke_tessellator.tessellate_path(&border_path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap_throw();
                 }
             }
             crate::Object2d::Circle(circle) => {
@@ -170,16 +170,16 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                 builder.add_circle(point(circle.center.x, circle.center.y), fill_radius, Winding::Positive);
                 let fill_path = builder.build();
                 if circle.color.a > 0.0 && fill_radius > 0.0 {
-                    fill_tessellator.tessellate_path(&fill_path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
+                    fill_tessellator.tessellate_path(&fill_path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap_throw();
                 }
                 // Draw inner border as a ring
                 if has_border && fill_radius > 0.0 {
-                    let linear_border_color = circle.border_color.unwrap().to_linear();
+                    let linear_border_color = circle.border_color.unwrap_throw().to_linear();
                     let mut border_builder = Path::builder();
                     border_builder.add_circle(point(circle.center.x, circle.center.y), fill_radius + border_width / 2.0, Winding::Positive);
                     let border_path = border_builder.build();
                     let options = StrokeOptions::default().with_line_width(border_width);
-                    stroke_tessellator.tessellate_path(&border_path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
+                    stroke_tessellator.tessellate_path(&border_path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap_throw();
                 }
             }
             crate::Object2d::Line(line) => {
@@ -195,7 +195,7 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                 let path = builder.build();
                 if line.points.len() >= 2 && line.color.a > 0.0 {
                     let options = StrokeOptions::default().with_line_width(line.width).with_line_cap(LineCap::Round).with_line_join(LineJoin::Round);
-                    stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
+                    stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap_throw();
                 }
             }
             crate::Object2d::Text(_) => {}

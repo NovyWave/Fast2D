@@ -1,40 +1,55 @@
 use web_sys::wasm_bindgen::UnwrapThrowExt;
 
+/// Draws a list of 2D objects onto the given CanvasRenderingContext2d.
 pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]) {
+    // Set default styles
     ctx.set_fill_style_str("black");
     ctx.set_stroke_style_str("black");
     ctx.set_line_width(1.0);
+
     for obj in objects {
         match obj {
             crate::Object2d::Rectangle(rect) => {
+                // Border logic
                 let border_width = rect.border_width.unwrap_or(0.0);
                 let has_border = border_width > 0.0 && rect.border_color.map_or(false, |c| c.a > 0.0);
+                // If border exists, fill area is reduced by border width
                 let fill_offset = if has_border { border_width } else { 0.0 };
                 let fill_x = rect.position.x + fill_offset;
                 let fill_y = rect.position.y + fill_offset;
                 let fill_w = rect.size.width - 2.0 * fill_offset;
                 let fill_h = rect.size.height - 2.0 * fill_offset;
+                // Adjust corner radii for fill area
                 let fill_radii = crate::backend::RoundedCorners {
                     top_left: (rect.rounded_corners.top_left - fill_offset).max(0.0),
                     top_right: (rect.rounded_corners.top_right - fill_offset).max(0.0),
                     bottom_left: (rect.rounded_corners.bottom_left - fill_offset).max(0.0),
                     bottom_right: (rect.rounded_corners.bottom_right - fill_offset).max(0.0),
                 };
-                if rect.rounded_corners.top_left > 0.0 || rect.rounded_corners.top_right > 0.0 || rect.rounded_corners.bottom_left > 0.0 || rect.rounded_corners.bottom_right > 0.0 {
+                // If any corner is rounded, use path drawing
+                let has_rounded = rect.rounded_corners.top_left > 0.0
+                    || rect.rounded_corners.top_right > 0.0
+                    || rect.rounded_corners.bottom_left > 0.0
+                    || rect.rounded_corners.bottom_right > 0.0;
+                if has_rounded {
+                    // Draw filled rounded rectangle if color is visible
                     if rect.color.a > 0.0 && fill_w > 0.0 && fill_h > 0.0 {
                         let fill_color = rect.color.to_canvas_rgba();
                         ctx.set_fill_style_str(&fill_color);
                         draw_rounded_rect_path(ctx, fill_x, fill_y, fill_w, fill_h, &fill_radii);
                         ctx.fill();
                     }
+                    // Draw border if needed
                     if has_border && fill_w > 0.0 && fill_h > 0.0 {
-                        let stroke_color = rect.border_color.unwrap().to_canvas_rgba();
+                        let stroke_color = rect.border_color.unwrap_throw().to_canvas_rgba();
                         ctx.set_stroke_style_str(&stroke_color);
                         ctx.set_line_width(border_width as f64);
+                        // Border is drawn centered on the rectangle edge
                         let border_x = rect.position.x + border_width / 2.0;
                         let border_y = rect.position.y + border_width / 2.0;
                         let border_w = rect.size.width - border_width;
                         let border_h = rect.size.height - border_width;
+                        // Adjust corner radii for border path
                         let border_radii = crate::backend::RoundedCorners {
                             top_left: (rect.rounded_corners.top_left - border_width / 2.0).max(0.0),
                             top_right: (rect.rounded_corners.top_right - border_width / 2.0).max(0.0),
@@ -45,13 +60,15 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         ctx.stroke();
                     }
                 } else {
+                    // Draw filled rectangle (no rounded corners)
                     if rect.color.a > 0.0 && fill_w > 0.0 && fill_h > 0.0 {
                         let fill_color = rect.color.to_canvas_rgba();
                         ctx.set_fill_style_str(&fill_color);
                         ctx.fill_rect(fill_x as f64, fill_y as f64, fill_w as f64, fill_h as f64);
                     }
+                    // Draw border (no rounded corners)
                     if has_border && fill_w > 0.0 && fill_h > 0.0 {
-                        let stroke_color = rect.border_color.unwrap().to_canvas_rgba();
+                        let stroke_color = rect.border_color.unwrap_throw().to_canvas_rgba();
                         ctx.set_stroke_style_str(&stroke_color);
                         ctx.set_line_width(border_width as f64);
                         ctx.stroke_rect(
@@ -64,9 +81,12 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                 }
             }
             crate::Object2d::Circle(circle) => {
+                // Border logic for circles
                 let border_width = circle.border_width.unwrap_or(0.0);
                 let has_border = border_width > 0.0 && circle.border_color.map_or(false, |c| c.a > 0.0);
+                // If border exists, fill radius is reduced
                 let fill_radius = if has_border { circle.radius - border_width } else { circle.radius };
+                // Draw filled circle
                 if circle.color.a > 0.0 && fill_radius > 0.0 {
                     ctx.begin_path();
                     ctx.arc(
@@ -80,6 +100,7 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                     ctx.set_fill_style_str(&fill_color);
                     ctx.fill();
                 }
+                // Draw border
                 if has_border && fill_radius > 0.0 {
                     ctx.begin_path();
                     ctx.arc(
@@ -89,13 +110,14 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         0.0,
                         std::f64::consts::PI * 2.0,
                     ).unwrap_throw();
-                    let stroke_color = circle.border_color.unwrap().to_canvas_rgba();
+                    let stroke_color = circle.border_color.unwrap_throw().to_canvas_rgba();
                     ctx.set_stroke_style_str(&stroke_color);
                     ctx.set_line_width(border_width as f64);
                     ctx.stroke();
                 }
             }
             crate::Object2d::Line(line) => {
+                // Draw polyline if at least two points and color is visible
                 if line.points.len() >= 2 && line.color.a > 0.0 {
                     let stroke_color = line.color.to_canvas_rgba();
                     ctx.set_stroke_style_str(&stroke_color);
@@ -109,15 +131,18 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                 }
             }
             crate::Object2d::Text(text) => {
+                // Draw text if color is visible
                 if text.color.a > 0.0 {
                     let fill_color = text.color.to_canvas_rgba();
                     ctx.set_fill_style_str(&fill_color);
+                    // Compose CSS font string
                     let font_style = if text.italic { "italic" } else { "normal" };
                     let font_weight = font_weight_to_css(&text.weight);
-                    let font_str = format!("{} {} {}px {}", font_style, font_weight, text.font_size, text.family);
+                    let font_str = format!("{font_style} {font_weight} {font_size}px {family}", font_style=font_style, font_weight=font_weight, font_size=text.font_size, family=text.family);
                     ctx.set_font(&font_str);
                     let max_width = text.width;
                     let line_height = text.font_size * text.line_height_multiplier;
+                    // Word wrapping: split text into lines that fit max_width
                     let words: Vec<&str> = text.text.split_whitespace().collect();
                     let mut lines: Vec<String> = Vec::new();
                     let mut current_line = String::new();
@@ -125,7 +150,7 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         let test_line = if current_line.is_empty() {
                             word.to_string()
                         } else {
-                            format!("{} {}", current_line, word)
+                            format!("{current_line} {word}")
                         };
                         let metrics = ctx.measure_text(&test_line).unwrap_throw();
                         if metrics.width() <= max_width as f64 || current_line.is_empty() {
@@ -138,11 +163,13 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                     if !current_line.is_empty() {
                         lines.push(current_line);
                     }
+                    // Draw each line, adjusting for font ascent
                     let mut y = text.top;
                     for line in lines {
                         let metrics = ctx.measure_text(&line).unwrap_throw();
                         let ascent = metrics.actual_bounding_box_ascent();
                         let font_box_ascent = metrics.font_bounding_box_ascent();
+                        // Some browsers have a gap between font box and actual ascent
                         let gap = font_box_ascent - ascent;
                         let line_gap = if gap > 0.0 && gap < 1.0 { gap } else { 0.0 };
                         ctx.fill_text(&line, text.left as f64, y as f64 + ascent + line_gap).unwrap_throw();
@@ -157,6 +184,8 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
     }
 }
 
+/// Draws a rounded rectangle path on the canvas context.
+/// This does not fill or stroke, just creates the path.
 fn draw_rounded_rect_path(
     ctx: &web_sys::CanvasRenderingContext2d,
     x: f32,
@@ -165,6 +194,7 @@ fn draw_rounded_rect_path(
     h: f32,
     radii: &crate::backend::RoundedCorners,
 ) {
+    // Clamp radii so they don't exceed half width/height
     let tl = radii.top_left.min(w / 2.0).min(h / 2.0);
     let tr = radii.top_right.min(w / 2.0).min(h / 2.0);
     let br = radii.bottom_right.min(w / 2.0).min(h / 2.0);
@@ -190,6 +220,7 @@ fn draw_rounded_rect_path(
     ctx.close_path();
 }
 
+/// Converts FontWeight enum to CSS font-weight string.
 fn font_weight_to_css(weight: &crate::object2d::FontWeight) -> &'static str {
     use crate::object2d::FontWeight::*;
     match weight {
