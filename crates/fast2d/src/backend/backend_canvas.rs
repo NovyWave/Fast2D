@@ -18,54 +18,64 @@ pub(crate) fn draw_canvas(ctx: &web_sys::CanvasRenderingContext2d, objects: &[cr
     for obj in objects {
         match obj {
             crate::Object2d::Rectangle(rect) => {
-                // Set fill color
-                let fill_color = rect.color.to_canvas_rgba();
-                ctx.set_fill_style_str(&fill_color);
-                // TODO: Add rounded rectangle support if radii > 0 using path API
-                ctx.fill_rect(
-                    rect.position.x as f64,
-                    rect.position.y as f64,
-                    rect.size.width as f64,
-                    rect.size.height as f64,
-                );
-                // Handle border
-                if let (Some(border_width), Some(border_color_val)) = (rect.border_width, rect.border_color) {
-                    if border_width > 0.0 && border_color_val.a > 0.0 {
-                        let stroke_color = border_color_val.to_canvas_rgba();
-                        ctx.set_stroke_style_str(&stroke_color);
-                        ctx.set_line_width(border_width as f64);
-                        ctx.stroke_rect(
-                            rect.position.x as f64,
-                            rect.position.y as f64,
-                            rect.size.width as f64,
-                            rect.size.height as f64,
-                        );
-                    }
+                let border_width = rect.border_width.unwrap_or(0.0);
+                let has_border = border_width > 0.0 && rect.border_color.map_or(false, |c| c.a > 0.0);
+                // Draw fill (shrink if border is present)
+                let fill_offset = if has_border { border_width } else { 0.0 };
+                let fill_x = rect.position.x + fill_offset;
+                let fill_y = rect.position.y + fill_offset;
+                let fill_w = rect.size.width - 2.0 * fill_offset;
+                let fill_h = rect.size.height - 2.0 * fill_offset;
+                if rect.color.a > 0.0 && fill_w > 0.0 && fill_h > 0.0 {
+                    let fill_color = rect.color.to_canvas_rgba();
+                    ctx.set_fill_style_str(&fill_color);
+                    ctx.fill_rect(fill_x as f64, fill_y as f64, fill_w as f64, fill_h as f64);
+                }
+                // Draw inner border
+                if has_border && fill_w > 0.0 && fill_h > 0.0 {
+                    let stroke_color = rect.border_color.unwrap().to_canvas_rgba();
+                    ctx.set_stroke_style_str(&stroke_color);
+                    ctx.set_line_width(border_width as f64);
+                    ctx.stroke_rect(
+                        (rect.position.x + border_width / 2.0) as f64,
+                        (rect.position.y + border_width / 2.0) as f64,
+                        (rect.size.width - border_width) as f64,
+                        (rect.size.height - border_width) as f64,
+                    );
                 }
             }
             crate::Object2d::Circle(circle) => {
-                ctx.begin_path();
-                ctx.arc(
-                    circle.center.x as f64,
-                    circle.center.y as f64,
-                    circle.radius as f64,
-                    0.0,
-                    std::f64::consts::PI * 2.0,
-                ).unwrap_throw();
-                // Fill
-                if circle.color.a > 0.0 {
+                let border_width = circle.border_width.unwrap_or(0.0);
+                let has_border = border_width > 0.0 && circle.border_color.map_or(false, |c| c.a > 0.0);
+                // Draw fill (shrink if border is present)
+                let fill_radius = if has_border { circle.radius - border_width } else { circle.radius };
+                if circle.color.a > 0.0 && fill_radius > 0.0 {
+                    ctx.begin_path();
+                    ctx.arc(
+                        circle.center.x as f64,
+                        circle.center.y as f64,
+                        fill_radius as f64,
+                        0.0,
+                        std::f64::consts::PI * 2.0,
+                    ).unwrap_throw();
                     let fill_color = circle.color.to_canvas_rgba();
                     ctx.set_fill_style_str(&fill_color);
                     ctx.fill();
                 }
-                // Border
-                if let (Some(border_width), Some(border_color_val)) = (circle.border_width, circle.border_color) {
-                    if border_width > 0.0 && border_color_val.a > 0.0 {
-                        let stroke_color = border_color_val.to_canvas_rgba();
-                        ctx.set_stroke_style_str(&stroke_color);
-                        ctx.set_line_width(border_width as f64);
-                        ctx.stroke();
-                    }
+                // Draw inner border as a ring
+                if has_border && fill_radius > 0.0 {
+                    ctx.begin_path();
+                    ctx.arc(
+                        circle.center.x as f64,
+                        circle.center.y as f64,
+                        (fill_radius + border_width / 2.0) as f64,
+                        0.0,
+                        std::f64::consts::PI * 2.0,
+                    ).unwrap_throw();
+                    let stroke_color = circle.border_color.unwrap().to_canvas_rgba();
+                    ctx.set_stroke_style_str(&stroke_color);
+                    ctx.set_line_width(border_width as f64);
+                    ctx.stroke();
                 }
             }
             crate::Object2d::Line(line) => {

@@ -399,39 +399,72 @@ pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         match obj {
             crate::Object2d::Rectangle(rect) => {
                 let linear_color = rect.color.to_linear();
+                let border_width = rect.border_width.unwrap_or(0.0);
+                let has_border = border_width > 0.0 && rect.border_color.map_or(false, |c| c.a > 0.0);
+                // Draw fill (shrink if border is present)
+                let fill_offset = if has_border { border_width } else { 0.0 };
+                let fill_box = Box2D::new(
+                    point(rect.position.x + fill_offset, rect.position.y + fill_offset),
+                    point(rect.position.x + rect.size.width - fill_offset, rect.position.y + rect.size.height - fill_offset),
+                );
                 let mut builder = Path::builder();
-                let rect_box = Box2D::new(point(rect.position.x, rect.position.y), point(rect.position.x + rect.size.width, rect.position.y + rect.size.height));
                 if rect.border_radii.top_left > 0.0 || rect.border_radii.top_right > 0.0 || rect.border_radii.bottom_left > 0.0 || rect.border_radii.bottom_right > 0.0 {
-                    builder.add_rounded_rectangle(&rect_box, &LyonBorderRadii { top_left: rect.border_radii.top_left, top_right: rect.border_radii.top_right, bottom_left: rect.border_radii.bottom_left, bottom_right: rect.border_radii.bottom_right }, Winding::Positive);
+                    builder.add_rounded_rectangle(&fill_box, &LyonBorderRadii {
+                        top_left: (rect.border_radii.top_left.max(0.0) - fill_offset).max(0.0),
+                        top_right: (rect.border_radii.top_right.max(0.0) - fill_offset).max(0.0),
+                        bottom_left: (rect.border_radii.bottom_left.max(0.0) - fill_offset).max(0.0),
+                        bottom_right: (rect.border_radii.bottom_right.max(0.0) - fill_offset).max(0.0),
+                    }, Winding::Positive);
                 } else {
-                    builder.add_rectangle(&rect_box, Winding::Positive);
+                    builder.add_rectangle(&fill_box, Winding::Positive);
                 }
-                let path = builder.build();
-                if rect.color.a > 0.0 {
-                    fill_tessellator.tessellate_path(&path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
+                let fill_path = builder.build();
+                if rect.color.a > 0.0 && fill_box.size().width > 0.0 && fill_box.size().height > 0.0 {
+                    fill_tessellator.tessellate_path(&fill_path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
                 }
-                if let (Some(border_width), Some(border_color_val)) = (rect.border_width, rect.border_color) {
-                    if border_width > 0.0 && border_color_val.a > 0.0 {
-                        let linear_border_color = border_color_val.to_linear();
-                        let options = StrokeOptions::default().with_line_width(border_width);
-                        stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
+                // Draw inner border
+                if has_border && fill_box.size().width > 0.0 && fill_box.size().height > 0.0 {
+                    let linear_border_color = rect.border_color.unwrap().to_linear();
+                    let border_box = Box2D::new(
+                        point(rect.position.x + border_width / 2.0, rect.position.y + border_width / 2.0),
+                        point(rect.position.x + rect.size.width - border_width / 2.0, rect.position.y + rect.size.height - border_width / 2.0),
+                    );
+                    let mut border_builder = Path::builder();
+                    if rect.border_radii.top_left > 0.0 || rect.border_radii.top_right > 0.0 || rect.border_radii.bottom_left > 0.0 || rect.border_radii.bottom_right > 0.0 {
+                        border_builder.add_rounded_rectangle(&border_box, &LyonBorderRadii {
+                            top_left: (rect.border_radii.top_left.max(0.0) - border_width / 2.0).max(0.0),
+                            top_right: (rect.border_radii.top_right.max(0.0) - border_width / 2.0).max(0.0),
+                            bottom_left: (rect.border_radii.bottom_left.max(0.0) - border_width / 2.0).max(0.0),
+                            bottom_right: (rect.border_radii.bottom_right.max(0.0) - border_width / 2.0).max(0.0),
+                        }, Winding::Positive);
+                    } else {
+                        border_builder.add_rectangle(&border_box, Winding::Positive);
                     }
+                    let border_path = border_builder.build();
+                    let options = StrokeOptions::default().with_line_width(border_width);
+                    stroke_tessellator.tessellate_path(&border_path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
                 }
             }
             crate::Object2d::Circle(circle) => {
                 let linear_color = circle.color.to_linear();
+                let border_width = circle.border_width.unwrap_or(0.0);
+                let has_border = border_width > 0.0 && circle.border_color.map_or(false, |c| c.a > 0.0);
+                // Draw fill (shrink if border is present)
+                let fill_radius = if has_border { circle.radius - border_width } else { circle.radius };
                 let mut builder = Path::builder();
-                builder.add_circle(point(circle.center.x, circle.center.y), circle.radius, Winding::Positive);
-                let path = builder.build();
-                if circle.color.a > 0.0 {
-                    fill_tessellator.tessellate_path(&path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
+                builder.add_circle(point(circle.center.x, circle.center.y), fill_radius, Winding::Positive);
+                let fill_path = builder.build();
+                if circle.color.a > 0.0 && fill_radius > 0.0 {
+                    fill_tessellator.tessellate_path(&fill_path, &FillOptions::default(), &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_color })).unwrap();
                 }
-                if let (Some(border_width), Some(border_color_val)) = (circle.border_width, circle.border_color) {
-                    if border_width > 0.0 && border_color_val.a > 0.0 {
-                        let linear_border_color = border_color_val.to_linear();
-                        let options = StrokeOptions::default().with_line_width(border_width);
-                        stroke_tessellator.tessellate_path(&path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
-                    }
+                // Draw inner border as a ring
+                if has_border && fill_radius > 0.0 {
+                    let linear_border_color = circle.border_color.unwrap().to_linear();
+                    let mut border_builder = Path::builder();
+                    border_builder.add_circle(point(circle.center.x, circle.center.y), fill_radius + border_width / 2.0, Winding::Positive);
+                    let border_path = border_builder.build();
+                    let options = StrokeOptions::default().with_line_width(border_width);
+                    stroke_tessellator.tessellate_path(&border_path, &options, &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex { position: [vertex.position().x, vertex.position().y], color: linear_border_color })).unwrap();
                 }
             }
             crate::Object2d::Line(line) => {

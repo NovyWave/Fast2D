@@ -52,8 +52,8 @@ impl Circle {
         self
     }
 
-    /// Sets the border width and color.
-    pub fn border(mut self, width: f32, r: u8, g: u8, b: u8, a: f32) -> Self {
+    /// Sets the border width and color as an inner border (fully inside the circle).
+    pub fn inner_border(mut self, width: f32, r: u8, g: u8, b: u8, a: f32) -> Self {
         self.border_width = Some(width.max(0.0));
         self.border_color = Some(Color::new(r, g, b, a));
         self
