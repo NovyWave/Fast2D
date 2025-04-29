@@ -9,7 +9,7 @@ compile_error!("Only one rendering backend feature ('webgl', 'webgpu', or 'canva
 compile_error!("One rendering backend feature ('webgl', 'webgpu', or 'canvas') must be enabled.");
 
 mod backend;
-pub use backend::{register_fonts, CanvasWrapper};
+pub use backend::{register_fonts, CanvasWrapper, RegisterFontsError};
 
 mod fetch_file;
 pub use fetch_file::fetch_file;

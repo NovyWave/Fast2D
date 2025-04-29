@@ -29,13 +29,6 @@ use {
 pub static FONT_SYSTEM: std::sync::OnceLock<std::sync::Mutex<glyphon::FontSystem>> = std::sync::OnceLock::new();
 pub const MSAA_SAMPLE_COUNT: u32 = 4;
 
-#[derive(Debug)]
-pub enum FontSystemInitError {
-    DatabaseError(String),
-    AlreadyInitialized,
-    NoFontsProvided,
-}
-
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct CanvasUniforms {
