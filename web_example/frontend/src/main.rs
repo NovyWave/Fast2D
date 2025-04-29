@@ -2,6 +2,10 @@ use zoon::{*, futures_util::future::try_join_all};
 use std::f32::consts::PI;
 use std::mem;
 
+// Type alias for clarity
+// Represents a collection of 2D objects for fast2d canvas
+type ExampleObjects = Vec<fast2d::Object2d>;
+
 /// Entry point: loads fonts and starts the app.
 pub fn main() {
     Task::start(async {
@@ -21,8 +25,8 @@ async fn load_and_register_fonts() {
     fast2d::register_fonts(&fonts).unwrap_throw();
 }
 
-/// Returns an array of objects for examples.
-fn examples() -> [Vec<fast2d::Object2d>; 3] {
+/// Returns an array of example object collections.
+fn examples() -> [ExampleObjects; 3] {
     [
         example_rectangle(),
         example_face(),
@@ -30,8 +34,9 @@ fn examples() -> [Vec<fast2d::Object2d>; 3] {
     ]
 }
 
-/// Example 1: Simple Rectangle
-fn example_rectangle() -> Vec<fast2d::Object2d> {
+// --- Example Generators ---
+
+fn example_rectangle() -> ExampleObjects {
     vec![
         fast2d::Rectangle::new()
             .position(50., 50.)
@@ -49,8 +54,7 @@ fn example_rectangle() -> Vec<fast2d::Object2d> {
     ]
 }
 
-/// Example 2: Simple Face
-fn example_face() -> Vec<fast2d::Object2d> {
+fn example_face() -> ExampleObjects {
     vec![
         fast2d::Circle::new()
             .center(175., 205.)
@@ -135,9 +139,8 @@ fn example_face() -> Vec<fast2d::Object2d> {
     ]
 }
 
-/// Example 3: Sine Wave
-fn example_sine_wave() -> Vec<fast2d::Object2d> {
-    let mut sine_points_tuples = Vec::new();
+fn example_sine_wave() -> ExampleObjects {
+    let mut points = Vec::new();
     let amplitude = 50.;
     let frequency = 0.02;
     let y_offset = 150.;
@@ -145,11 +148,11 @@ fn example_sine_wave() -> Vec<fast2d::Object2d> {
     for i in 0..=steps {
         let x = (i as f32 / steps as f32) * 350.;
         let y = y_offset + amplitude * (x * frequency * 2. * PI).sin();
-        sine_points_tuples.push((x, y));
+        points.push((x, y));
     }
     vec![
         fast2d::Line::new()
-            .points(&sine_points_tuples)
+            .points(&points)
             .color(0, 255, 255, 1.0)
             .width(3.)
             .into(),
@@ -164,43 +167,45 @@ fn example_sine_wave() -> Vec<fast2d::Object2d> {
     ]
 }
 
-/// Root UI layout: creates a scrollable column of example panels.
+// --- UI Layout ---
+
 fn root() -> impl Element {
     El::new()
-        .s(Height::fill()) // Ensure column fills height
+        .s(Height::fill())
         .s(Width::fill())
         .s(Scrollbars::both())
         .s(Background::new().color(color!("Black")))
         .child(
             Column::new()
-                .s(Gap::both(10)) // Add gap between panels
+                .s(Gap::both(10))
                 .s(Scrollbars::both())
                 .s(Padding::all(10))
                 .items(examples().map(panel_with_canvas))
         )
 }
 
-/// Wraps a canvas example in a styled panel.
-fn panel_with_canvas(example_objects: Vec<fast2d::Object2d>) -> impl Element {
+fn panel_with_canvas(example_objects: ExampleObjects) -> impl Element {
     El::new()
         .s(Align::center())
         .s(Clip::both())
         .s(Borders::all(Border::new().color(color!("Gray"))))
-        .s(Width::fill().max(650)) // Example max width
-        .s(Height::exact(350)) // Example max height
+        .s(Width::fill().max(650))
+        .s(Height::exact(350))
         .child_signal(canvas_with_example(example_objects).into_signal_option())
 }
 
-/// Asynchronously attaches a fast2d example to a Zoon canvas element.
-async fn canvas_with_example(mut example_objects: Vec<fast2d::Object2d>) -> impl Element {
+async fn canvas_with_example(mut example_objects: ExampleObjects) -> impl Element {
     let mut zoon_canvas = Canvas::new()
         .width(0)
         .height(0)
         .s(Width::fill())
         .s(Height::fill());
 
-    let mut canvas_wrapper = fast2d::CanvasWrapper::new_with_canvas(zoon_canvas.raw_el_mut().dom_element()).await;
-    canvas_wrapper.update_objects(move |objects| mem::swap(objects, &mut example_objects));
+    let dom_canvas = zoon_canvas.raw_el_mut().dom_element();
+    let mut canvas_wrapper = fast2d::CanvasWrapper::new_with_canvas(dom_canvas).await;
+    canvas_wrapper.update_objects(move |objects| {
+        mem::swap(objects, &mut example_objects)
+    });
 
     zoon_canvas.update_raw_el(move |raw_el| {
         raw_el.on_resize(move |width, height| {
