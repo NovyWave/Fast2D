@@ -43,17 +43,15 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             buffer.set_size(&mut font_system, Some(text_width_f32), Some(text_height_f32));
 
             // Convert font family to glyphon format
-            let family_owned: FamilyOwned = (&text.family).into();
-            let glyphon_family = match &family_owned {
-                FamilyOwned::Name(name) => GlyphonFamily::Name(name.as_str()),
-                FamilyOwned::SansSerif => GlyphonFamily::SansSerif,
-                FamilyOwned::Serif => GlyphonFamily::Serif,
-                FamilyOwned::Monospace => GlyphonFamily::Monospace,
-                FamilyOwned::Cursive => GlyphonFamily::Cursive,
-                FamilyOwned::Fantasy => GlyphonFamily::Fantasy,
+            let glyphon_family = match &text.family {
+                crate::object2d::Family::Name(name) => GlyphonFamily::Name(name.as_ref()),
+                crate::object2d::Family::SansSerif => GlyphonFamily::SansSerif,
+                crate::object2d::Family::Serif => GlyphonFamily::Serif,
+                crate::object2d::Family::Monospace => GlyphonFamily::Monospace,
+                crate::object2d::Family::Cursive => GlyphonFamily::Cursive,
+                crate::object2d::Family::Fantasy => GlyphonFamily::Fantasy,
             };
 
-            // Prepare font query for fallback handling
             let family_for_query = match &glyphon_family {
                 GlyphonFamily::Name(name) => glyphon::fontdb::Family::Name(name),
                 GlyphonFamily::SansSerif => glyphon::fontdb::Family::SansSerif,
@@ -79,7 +77,20 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             let attrs = Attrs::new()
                 .family(glyphon_family)
                 .color(glyphon_color)
-                .weight(font_weight_to_glyphon(text.weight))
+                .weight({
+                    use crate::object2d::FontWeight::*;
+                    match text.weight {
+                        Thin => glyphon::fontdb::Weight::THIN,
+                        ExtraLight => glyphon::fontdb::Weight::EXTRA_LIGHT,
+                        Light => glyphon::fontdb::Weight::LIGHT,
+                        Regular => glyphon::fontdb::Weight::NORMAL,
+                        Medium => glyphon::fontdb::Weight::MEDIUM,
+                        SemiBold => glyphon::fontdb::Weight::SEMIBOLD,
+                        Bold => glyphon::fontdb::Weight::BOLD,
+                        ExtraBold => glyphon::fontdb::Weight::EXTRA_BOLD,
+                        Black => glyphon::fontdb::Weight::BLACK,
+                    }
+                })
                 .style(if text.italic { glyphon::fontdb::Style::Italic } else { glyphon::fontdb::Style::Normal });
             buffer.set_text(&mut font_system, &text.text, &attrs, Shaping::Advanced);
             glyph_buffers.push(buffer);
