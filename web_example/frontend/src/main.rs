@@ -107,12 +107,12 @@ fn example_face() -> ExampleObjects {
             .inner_border(3., 139, 0, 0, 1.0)
             .into(),
         // Hat crown
-        fast2d::Rectangle::new()
+            fast2d::Rectangle::new()
             .position(135., 60.)
             .size(80., 45.)
             .color(0, 0, 0, 0.0)
-            .rounded_corners(5., 5., 0., 0.)
-            .inner_border(3., 255, 165, 0, 1.0)
+            .rounded_corners(15., 15., 0., 0.)
+            .inner_border(5., 255, 165, 0, 1.0)
             .into(),
         // Smile
         fast2d::Line::new()
@@ -163,7 +163,7 @@ fn example_face() -> ExampleObjects {
 fn example_sine_wave() -> ExampleObjects {
     let mut points = Vec::new();
     let amplitude = 50.;
-    let frequency = 0.02;
+    let frequency = 0.01;
     let y_offset = 150.;
     let steps = 100;
     for i in 0..=steps {
