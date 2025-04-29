@@ -1,6 +1,6 @@
 use crate::Object2d;
 use web_sys::HtmlCanvasElement;
-use crate::backend::Graphics;
+use super::Graphics;
 
 pub struct CanvasWrapper {
     objects: Vec<Object2d>,
@@ -21,7 +21,7 @@ impl CanvasWrapper {
         let width = canvas.width().max(1);
         let height = canvas.height().max(1);
         self.canvas_element = Some(canvas.clone());
-        self.graphics = Some(crate::backend::create_graphics(canvas, width, height).await);
+        self.graphics = Some(super::create_graphics(canvas, width, height).await);
         self.draw();
     }
 
@@ -36,31 +36,14 @@ impl CanvasWrapper {
             canvas.set_height(height);
         }
         if let Some(graphics) = self.graphics.as_mut() {
-            let new_width = width.max(1);
-            let new_height = height.max(1);
-            graphics.surface_config.width = new_width;
-            graphics.surface_config.height = new_height;
-            graphics.surface.configure(&graphics.device, &graphics.surface_config);
-            graphics.msaa_texture = graphics.device.create_texture(&wgpu::TextureDescriptor {
-                label: Some("MSAA Texture"),
-                size: wgpu::Extent3d { width: new_width, height: new_height, depth_or_array_layers: 1 },
-                mip_level_count: 1,
-                sample_count: crate::backend::MSAA_SAMPLE_COUNT,
-                dimension: wgpu::TextureDimension::D2,
-                format: graphics.surface_config.format,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                view_formats: &[],
-            });
-            graphics.viewport.update(&graphics.queue, glyphon::Resolution { width: new_width, height: new_height });
-            let uniforms = crate::backend::CanvasUniforms { width: new_width as f32, height: new_height as f32, _padding1: 0.0, _padding2: 0.0 };
-            graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+            super::resize_graphics(graphics, width, height);
             self.draw();
         }
     }
 
     fn draw(&mut self) {
         if let Some(graphics) = self.graphics.as_mut() {
-            crate::backend::draw_wgpu(graphics, &self.objects);
+            super::draw_wgpu(graphics, &self.objects);
         }
     }
 }

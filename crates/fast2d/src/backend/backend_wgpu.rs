@@ -285,6 +285,28 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
     }
 }
 
+/// Resize the graphics resources to match the new canvas size.
+pub fn resize_graphics(graphics: &mut Graphics, width: u32, height: u32) {
+    let new_width = width.max(1);
+    let new_height = height.max(1);
+    graphics.surface_config.width = new_width;
+    graphics.surface_config.height = new_height;
+    graphics.surface.configure(&graphics.device, &graphics.surface_config);
+    graphics.msaa_texture = graphics.device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("MSAA Texture"),
+        size: wgpu::Extent3d { width: new_width, height: new_height, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: crate::backend::MSAA_SAMPLE_COUNT,
+        dimension: wgpu::TextureDimension::D2,
+        format: graphics.surface_config.format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    });
+    graphics.viewport.update(&graphics.queue, glyphon::Resolution { width: new_width, height: new_height });
+    let uniforms = crate::backend::CanvasUniforms { width: new_width as f32, height: new_height as f32, _padding1: 0.0, _padding2: 0.0 };
+    graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+}
+
 pub fn draw_wgpu(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     let output = match gfx.surface.get_current_texture() {
         Ok(texture) => texture,
