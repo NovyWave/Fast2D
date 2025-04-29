@@ -22,7 +22,7 @@ async fn load_and_register_fonts() {
         fast2d::fetch_file("/_api/public/fonts/Inter-Bold.ttf"),
         fast2d::fetch_file("/_api/public/fonts/Inter-BoldItalic.ttf"),
     ]).await.unwrap_throw();
-    fast2d::register_fonts(&fonts).unwrap_throw();
+    fast2d::register_fonts(fonts).unwrap_throw();
 }
 
 /// Returns an array of example object collections.

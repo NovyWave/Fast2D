@@ -4,15 +4,15 @@ use ttf_parser::{Face, name_id};
 
 /// Registers fonts for the Canvas backend.
 ///
-/// You can call this fuction multiple times to add more fonts.
+/// You can call this function multiple times to add more fonts.
 ///
 /// # Arguments
-/// * `fonts` - A slice of font data, each as a Vec<u8> (e.g., TTF or OTF).
+/// * `fonts` - Font data as a Vec of Vec<u8> (e.g., TTF or OTF).
 ///
 /// # Returns
 /// * `Ok(())` if at least one valid font is loaded or added.
 /// * `Err(RegisterFontsError)` if no valid font is loaded, no fonts are provided, or browser APIs are unavailable.
-pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), RegisterFontsError> {
+pub fn register_fonts(fonts: Vec<Vec<u8>>) -> Result<(), RegisterFontsError> {
     if fonts.is_empty() {
         return Err(RegisterFontsError::NoFontsProvided);
     }
@@ -23,7 +23,7 @@ pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), RegisterFontsError> {
     let mut any_loaded = false;
 
     for font_bytes in fonts {
-        let face = Face::parse(font_bytes, 0)
+        let face = Face::parse(&font_bytes, 0)
             .map_err(|_| RegisterFontsError::FontParseFailed)?;
 
         let mut family = None;

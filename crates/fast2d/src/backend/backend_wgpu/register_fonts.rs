@@ -5,15 +5,15 @@ use web_sys::wasm_bindgen::UnwrapThrowExt;
 
 /// Registers fonts for the WGPU backend.
 ///
-/// You can call this fuction multiple times to add more fonts.
+/// You can call this function multiple times to add more fonts.
 ///
 /// # Arguments
-/// * `fonts` - A slice of font data, each as a Vec<u8> (e.g., TTF or OTF).
+/// * `fonts` - Font data as a Vec of Vec<u8> (e.g., TTF or OTF).
 ///
 /// # Returns
 /// * `Ok(())` if at least one valid font is loaded or added.
 /// * `Err(RegisterFontsError)` if no valid font is loaded, or if no fonts are provided.
-pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), RegisterFontsError> {
+pub fn register_fonts(fonts: Vec<Vec<u8>>) -> Result<(), RegisterFontsError> {
     if fonts.is_empty() {
         return Err(RegisterFontsError::NoFontsProvided);
     }
@@ -23,7 +23,7 @@ pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), RegisterFontsError> {
         let mut font_system = font_system_mutex.lock().unwrap_throw();
         let db = font_system.db_mut();
         for font_data in fonts {
-            db.load_font_data(font_data.clone());
+            db.load_font_data(font_data);
         }
         if db.faces().next().is_none() {
             return Err(RegisterFontsError::NoValidFontLoaded);
@@ -35,7 +35,7 @@ pub fn register_fonts(fonts: &[Vec<u8>]) -> Result<(), RegisterFontsError> {
     let mut font_system = FontSystem::new();
     let db = font_system.db_mut();
     for font_data in fonts {
-        db.load_font_data(font_data.clone());
+        db.load_font_data(font_data);
     }
     if db.faces().next().is_none() {
         return Err(RegisterFontsError::NoValidFontLoaded);
