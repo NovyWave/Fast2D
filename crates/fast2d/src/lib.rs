@@ -12,7 +12,7 @@ mod backend;
 pub use backend::{register_fonts, CanvasWrapper, RegisterFontsError};
 
 mod fetch_file;
-pub use fetch_file::fetch_file;
+pub use fetch_file::{fetch_file, FetchFileError};
 
 pub mod object2d;
 pub use object2d::*;
