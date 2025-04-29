@@ -11,7 +11,7 @@ pub struct Rectangle {
     /// The fill color of the rectangle.
     pub(crate) color: Color,
     /// The radii for rounded corners.
-    pub(crate) border_radii: RoundedCorners,
+    pub(crate) rounded_corners: RoundedCorners,
     /// The width of the border, if any.
     pub(crate) border_width: Option<f32>,
     /// The color of the border, if any.
@@ -24,7 +24,7 @@ impl Default for Rectangle {
             position: Point::default(),
             size: Size::default(),
             color: Color::default(),
-            border_radii: RoundedCorners::default(),
+            rounded_corners: RoundedCorners::default(),
             border_width: None,
             border_color: None,
         }
@@ -57,7 +57,7 @@ impl Rectangle {
 
     /// Sets the radii for the rectangle's rounded corners.
     pub fn rounded_corners(mut self, top_left: f32, top_right: f32, bottom_left: f32, bottom_right: f32) -> Self {
-        self.border_radii = RoundedCorners {
+        self.rounded_corners = RoundedCorners {
             top_left: top_left.max(0.0),
             top_right: top_right.max(0.0),
             bottom_left: bottom_left.max(0.0),

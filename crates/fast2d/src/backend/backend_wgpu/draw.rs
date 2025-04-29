@@ -123,12 +123,12 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                     point(rect.position.x + rect.size.width - fill_offset, rect.position.y + rect.size.height - fill_offset),
                 );
                 let mut builder = Path::builder();
-                if rect.border_radii.top_left > 0.0 || rect.border_radii.top_right > 0.0 || rect.border_radii.bottom_left > 0.0 || rect.border_radii.bottom_right > 0.0 {
+                if rect.rounded_corners.top_left > 0.0 || rect.rounded_corners.top_right > 0.0 || rect.rounded_corners.bottom_left > 0.0 || rect.rounded_corners.bottom_right > 0.0 {
                     builder.add_rounded_rectangle(&fill_box, &LyonBorderRadii {
-                        top_left: (rect.border_radii.top_left.max(0.0) - fill_offset).max(0.0),
-                        top_right: (rect.border_radii.top_right.max(0.0) - fill_offset).max(0.0),
-                        bottom_left: (rect.border_radii.bottom_left.max(0.0) - fill_offset).max(0.0),
-                        bottom_right: (rect.border_radii.bottom_right.max(0.0) - fill_offset).max(0.0),
+                        top_left: (rect.rounded_corners.top_left.max(0.0) - fill_offset).max(0.0),
+                        top_right: (rect.rounded_corners.top_right.max(0.0) - fill_offset).max(0.0),
+                        bottom_left: (rect.rounded_corners.bottom_left.max(0.0) - fill_offset).max(0.0),
+                        bottom_right: (rect.rounded_corners.bottom_right.max(0.0) - fill_offset).max(0.0),
                     }, Winding::Positive);
                 } else {
                     builder.add_rectangle(&fill_box, Winding::Positive);
@@ -145,12 +145,12 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                         point(rect.position.x + rect.size.width - border_width / 2.0, rect.position.y + rect.size.height - border_width / 2.0),
                     );
                     let mut border_builder = Path::builder();
-                    if rect.border_radii.top_left > 0.0 || rect.border_radii.top_right > 0.0 || rect.border_radii.bottom_left > 0.0 || rect.border_radii.bottom_right > 0.0 {
+                    if rect.rounded_corners.top_left > 0.0 || rect.rounded_corners.top_right > 0.0 || rect.rounded_corners.bottom_left > 0.0 || rect.rounded_corners.bottom_right > 0.0 {
                         border_builder.add_rounded_rectangle(&border_box, &LyonBorderRadii {
-                            top_left: (rect.border_radii.top_left.max(0.0) - border_width / 2.0).max(0.0),
-                            top_right: (rect.border_radii.top_right.max(0.0) - border_width / 2.0).max(0.0),
-                            bottom_left: (rect.border_radii.bottom_left.max(0.0) - border_width / 2.0).max(0.0),
-                            bottom_right: (rect.border_radii.bottom_right.max(0.0) - border_width / 2.0).max(0.0),
+                            top_left: (rect.rounded_corners.top_left.max(0.0) - border_width / 2.0).max(0.0),
+                            top_right: (rect.rounded_corners.top_right.max(0.0) - border_width / 2.0).max(0.0),
+                            bottom_left: (rect.rounded_corners.bottom_left.max(0.0) - border_width / 2.0).max(0.0),
+                            bottom_right: (rect.rounded_corners.bottom_right.max(0.0) - border_width / 2.0).max(0.0),
                         }, Winding::Positive);
                     } else {
                         border_builder.add_rectangle(&border_box, Winding::Positive);

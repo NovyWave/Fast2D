@@ -15,12 +15,12 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                 let fill_w = rect.size.width - 2.0 * fill_offset;
                 let fill_h = rect.size.height - 2.0 * fill_offset;
                 let fill_radii = crate::backend::RoundedCorners {
-                    top_left: (rect.border_radii.top_left - fill_offset).max(0.0),
-                    top_right: (rect.border_radii.top_right - fill_offset).max(0.0),
-                    bottom_left: (rect.border_radii.bottom_left - fill_offset).max(0.0),
-                    bottom_right: (rect.border_radii.bottom_right - fill_offset).max(0.0),
+                    top_left: (rect.rounded_corners.top_left - fill_offset).max(0.0),
+                    top_right: (rect.rounded_corners.top_right - fill_offset).max(0.0),
+                    bottom_left: (rect.rounded_corners.bottom_left - fill_offset).max(0.0),
+                    bottom_right: (rect.rounded_corners.bottom_right - fill_offset).max(0.0),
                 };
-                if rect.border_radii.top_left > 0.0 || rect.border_radii.top_right > 0.0 || rect.border_radii.bottom_left > 0.0 || rect.border_radii.bottom_right > 0.0 {
+                if rect.rounded_corners.top_left > 0.0 || rect.rounded_corners.top_right > 0.0 || rect.rounded_corners.bottom_left > 0.0 || rect.rounded_corners.bottom_right > 0.0 {
                     if rect.color.a > 0.0 && fill_w > 0.0 && fill_h > 0.0 {
                         let fill_color = rect.color.to_canvas_rgba();
                         ctx.set_fill_style_str(&fill_color);
@@ -36,10 +36,10 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         let border_w = rect.size.width - border_width;
                         let border_h = rect.size.height - border_width;
                         let border_radii = crate::backend::RoundedCorners {
-                            top_left: (rect.border_radii.top_left - border_width / 2.0).max(0.0),
-                            top_right: (rect.border_radii.top_right - border_width / 2.0).max(0.0),
-                            bottom_left: (rect.border_radii.bottom_left - border_width / 2.0).max(0.0),
-                            bottom_right: (rect.border_radii.bottom_right - border_width / 2.0).max(0.0),
+                            top_left: (rect.rounded_corners.top_left - border_width / 2.0).max(0.0),
+                            top_right: (rect.rounded_corners.top_right - border_width / 2.0).max(0.0),
+                            bottom_left: (rect.rounded_corners.bottom_left - border_width / 2.0).max(0.0),
+                            bottom_right: (rect.rounded_corners.bottom_right - border_width / 2.0).max(0.0),
                         };
                         draw_rounded_rect_path(ctx, border_x, border_y, border_w, border_h, &border_radii);
                         ctx.stroke();
