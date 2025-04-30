@@ -32,15 +32,6 @@ pub const MSAA_SAMPLE_COUNT: u32 = 4;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
-pub struct CanvasUniforms {
-    pub width: f32,
-    pub height: f32,
-    pub _padding1: f32,
-    pub _padding2: f32,
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ColoredVertex {
     pub position: [f32; 2],
     pub color: [f32; 4],

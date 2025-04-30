@@ -1,6 +1,5 @@
 use wgpu::{Device, Queue, Surface, SurfaceConfiguration, Texture, BindGroup, Buffer as WgpuBuffer};
-use crate::backend::MSAA_SAMPLE_COUNT;
-use crate::backend::CanvasUniforms;
+use super::MSAA_SAMPLE_COUNT;
 use glyphon::Viewport;
 use bytemuck;
 use wgpu::SurfaceTarget;
@@ -8,6 +7,15 @@ use web_sys::HtmlCanvasElement;
 use glyphon::{Cache, SwashCache, TextAtlas, TextRenderer, Resolution, ColorMode};
 use wgpu::util::DeviceExt;
 use web_sys::wasm_bindgen::UnwrapThrowExt;
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
+struct CanvasUniforms {
+    width: f32,
+    height: f32,
+    _padding1: f32,
+    _padding2: f32,
+}
 
 pub struct Graphics {
     pub device: Device,
