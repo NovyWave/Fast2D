@@ -192,7 +192,7 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
             module: &shader,
             entry_point: Some("vs_main"),
             compilation_options: Default::default(),
-            buffers: &[crate::backend::ColoredVertex::desc()],
+            buffers: &[super::ColoredVertex::desc()],
         },
         fragment: Some(wgpu::FragmentState {
             module: &shader,

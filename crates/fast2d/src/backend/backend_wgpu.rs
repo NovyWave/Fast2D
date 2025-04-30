@@ -1,17 +1,3 @@
-use {
-    lyon::path::{Path, Winding},
-    lyon::path::builder::BorderRadii as LyonBorderRadii,
-    lyon::math::Box2D,
-    lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder, StrokeTessellator, StrokeOptions, StrokeVertex, LineCap, LineJoin},
-    wgpu::TextureViewDescriptor,
-    wgpu::util::DeviceExt,
-    glyphon::{Shaping, Buffer as GlyphonBuffer, TextArea, Attrs, TextBounds, Metrics, Family as GlyphonFamily},
-    bytemuck,
-    web_sys::console,
-    web_sys::wasm_bindgen::{JsValue, UnwrapThrowExt},
-    lyon::math::point,
-};
-
 mod register_fonts;
 pub use register_fonts::register_fonts;
 
@@ -27,7 +13,9 @@ pub use draw::draw;
 mod graphics;
 pub use graphics::{Graphics, resize_graphics, create_graphics};
 
-pub static FONT_SYSTEM: std::sync::OnceLock<std::sync::Mutex<glyphon::FontSystem>> = std::sync::OnceLock::new();
+use std::sync::{OnceLock, Mutex};
+
+pub static FONT_SYSTEM: OnceLock<Mutex<glyphon::FontSystem>> = OnceLock::new();
 pub const MSAA_SAMPLE_COUNT: u32 = 4;
 
 #[repr(C)]
@@ -39,8 +27,9 @@ pub struct ColoredVertex {
 
 impl ColoredVertex {
     pub fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        use std::mem;
         wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<ColoredVertex>() as wgpu::BufferAddress,
+            array_stride: mem::size_of::<ColoredVertex>() as wgpu::BufferAddress,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute {
@@ -49,7 +38,7 @@ impl ColoredVertex {
                     format: wgpu::VertexFormat::Float32x2,
                 },
                 wgpu::VertexAttribute {
-                    offset: std::mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
+                    offset: mem::size_of::<[f32; 2]>() as wgpu::BufferAddress,
                     shader_location: 1,
                     format: wgpu::VertexFormat::Float32x4,
                 },
