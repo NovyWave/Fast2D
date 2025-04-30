@@ -1,3 +1,17 @@
+use {
+    lyon::path::{Path, Winding},
+    lyon::path::builder::BorderRadii as LyonBorderRadii,
+    lyon::math::Box2D,
+    lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder, StrokeTessellator, StrokeOptions, StrokeVertex, LineCap, LineJoin},
+    wgpu::TextureViewDescriptor,
+    wgpu::util::DeviceExt,
+    glyphon::{Shaping, Buffer as GlyphonBuffer, TextArea, Attrs, TextBounds, Metrics, Family as GlyphonFamily},
+    bytemuck,
+    web_sys::console,
+    web_sys::wasm_bindgen::{JsValue, UnwrapThrowExt},
+    lyon::math::point,
+};
+
 mod register_fonts;
 pub use register_fonts::register_fonts;
 
@@ -11,21 +25,7 @@ mod draw;
 pub use draw::draw;
 
 mod graphics;
-pub use graphics::{resize_graphics, create_graphics};
-
-use {
-    lyon::path::{Path, Winding},
-    lyon::path::builder::BorderRadii as LyonBorderRadii,
-    lyon::math::Box2D,
-    lyon::tessellation::{FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder, StrokeTessellator, StrokeOptions, StrokeVertex, LineCap, LineJoin},
-    wgpu::{Device, Queue, Surface, SurfaceConfiguration, Texture, BindGroupLayout, BindGroup, Buffer as WgpuBuffer, TextureViewDescriptor},
-    wgpu::util::DeviceExt,
-    glyphon::{Shaping, Buffer as GlyphonBuffer, SwashCache, TextArea, Attrs, TextBounds, Metrics, Family as GlyphonFamily},
-    bytemuck,
-    web_sys::console,
-    web_sys::wasm_bindgen::{JsValue, UnwrapThrowExt},
-    lyon::math::point,
-};
+pub use graphics::{Graphics, resize_graphics, create_graphics};
 
 pub static FONT_SYSTEM: std::sync::OnceLock<std::sync::Mutex<glyphon::FontSystem>> = std::sync::OnceLock::new();
 pub const MSAA_SAMPLE_COUNT: u32 = 4;
@@ -65,22 +65,4 @@ impl ColoredVertex {
             ],
         }
     }
-}
-
-#[allow(dead_code)]
-pub struct Graphics {
-    pub device: Device,
-    pub queue: Queue,
-    pub surface: Surface<'static>,
-    pub surface_config: SurfaceConfiguration,
-    pub is_srgb: bool,
-    pub msaa_texture: Texture,
-    pub swash_cache: SwashCache,
-    pub viewport: glyphon::Viewport,
-    pub atlas: glyphon::TextAtlas,
-    pub text_renderer: glyphon::TextRenderer,
-    pub uniform_buffer: WgpuBuffer,
-    pub bind_group_layout: BindGroupLayout,
-    pub bind_group: BindGroup,
-    pub rect_pipeline: wgpu::RenderPipeline,
 }

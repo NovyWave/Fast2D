@@ -1,9 +1,6 @@
-//! Graphics initialization and resizing helpers for the wgpu backend.
-
-use wgpu::{Device, Texture};
+use wgpu::{Device, Queue, Surface, SurfaceConfiguration, Texture, BindGroup, Buffer as WgpuBuffer};
 use crate::backend::MSAA_SAMPLE_COUNT;
 use crate::backend::CanvasUniforms;
-use crate::backend::Graphics;
 use glyphon::Viewport;
 use bytemuck;
 use wgpu::SurfaceTarget;
@@ -12,17 +9,19 @@ use glyphon::{Cache, SwashCache, TextAtlas, TextRenderer, Resolution, ColorMode}
 use wgpu::util::DeviceExt;
 use web_sys::wasm_bindgen::UnwrapThrowExt;
 
-pub fn create_msaa_texture(device: &Device, width: u32, height: u32, format: wgpu::TextureFormat) -> Texture {
-    device.create_texture(&wgpu::TextureDescriptor {
-        label: Some("MSAA Texture"),
-        size: wgpu::Extent3d { width: width.max(1), height: height.max(1), depth_or_array_layers: 1 },
-        mip_level_count: 1,
-        sample_count: MSAA_SAMPLE_COUNT,
-        dimension: wgpu::TextureDimension::D2,
-        format,
-        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-        view_formats: &[],
-    })
+pub struct Graphics {
+    pub device: Device,
+    pub queue: Queue,
+    pub surface: Surface<'static>,
+    pub surface_config: SurfaceConfiguration,
+    pub msaa_texture: Texture,
+    pub swash_cache: glyphon::SwashCache,
+    pub viewport: glyphon::Viewport,
+    pub atlas: glyphon::TextAtlas,
+    pub text_renderer: glyphon::TextRenderer,
+    pub uniform_buffer: WgpuBuffer,
+    pub bind_group: BindGroup,
+    pub rect_pipeline: wgpu::RenderPipeline,
 }
 
 pub fn resize_graphics(graphics: &mut Graphics, width: u32, height: u32) {
@@ -35,6 +34,19 @@ pub fn resize_graphics(graphics: &mut Graphics, width: u32, height: u32) {
     graphics.viewport.update(&graphics.queue, glyphon::Resolution { width: new_width, height: new_height });
     let uniforms = CanvasUniforms { width: new_width as f32, height: new_height as f32, _padding1: 0.0, _padding2: 0.0 };
     graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+}
+
+fn create_msaa_texture(device: &Device, width: u32, height: u32, format: wgpu::TextureFormat) -> Texture {
+    device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("MSAA Texture"),
+        size: wgpu::Extent3d { width: width.max(1), height: height.max(1), depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: MSAA_SAMPLE_COUNT,
+        dimension: wgpu::TextureDimension::D2,
+        format,
+        usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        view_formats: &[],
+    })
 }
 
 pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32) -> Graphics {
@@ -78,7 +90,6 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
         .copied()
         .find(|format| surface_caps.formats.contains(format))
         .unwrap_or(surface_caps.formats[0]);
-    let is_srgb = false;
     let target_format = surface_format;
 
     let surface_config = wgpu::SurfaceConfiguration {
@@ -136,11 +147,7 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
     let mut viewport = Viewport::new(&device, &cache);
     viewport.update(&queue, Resolution { width, height });
 
-    let color_mode = if is_srgb {
-        ColorMode::Accurate
-    } else {
-        ColorMode::Web
-    };
+    let color_mode = ColorMode::Web;
 
     let mut atlas = TextAtlas::with_color_mode(
         &device,
@@ -213,14 +220,12 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
         queue,
         surface,
         surface_config,
-        is_srgb,
         msaa_texture,
         swash_cache,
         viewport,
         atlas,
         text_renderer,
         uniform_buffer,
-        bind_group_layout,
         bind_group,
         rect_pipeline,
     };
