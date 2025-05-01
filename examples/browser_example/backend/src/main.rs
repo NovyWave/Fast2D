@@ -2,7 +2,7 @@ use moon::*;
 
 async fn frontend() -> Frontend {
     Frontend::new()
-        .title("Fast2D Web Example")
+        .title("Fast2D Browser Example")
         .index_by_robots(false)
 }
 

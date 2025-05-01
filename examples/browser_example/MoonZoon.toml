@@ -18,14 +18,12 @@ frontend = [
     "frontend/src",
     "shared/Cargo.toml",
     "shared/src",
-    "../crates/fast2d/Cargo.toml",
-    "../crates/fast2d/src",
+    "../../crates/fast2d/Cargo.toml",
+    "../../crates/fast2d/src",
 ]
 backend = [
     "backend/Cargo.toml",
     "backend/src",
     "shared/Cargo.toml",
     "shared/src",
-    "../crates/fast2d/Cargo.toml",
-    "../crates/fast2d/src",
 ]
