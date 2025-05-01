@@ -4,7 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.tauri_example.app",
   "build": {
-    "frontendDist": "../src"
+    "frontendDist": "../frontend_dist",
+    "devUrl": "http://localhost:8080",
+    "beforeDevCommand": "makers mzoon start",
+    "beforeBuildCommand": "makers mzoon build -r -f"
   },
   "app": {
     "withGlobalTauri": true,

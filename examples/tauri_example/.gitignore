@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# MoonZoon project files
+frontend/wasm-bindgen*
+frontend/binaryen
+frontend/pkg
+MoonZoonCustom.toml
+frontend_dist/_api
+frontend_dist/index.html
+mzoon
+
+# Tauri files
+tauri
