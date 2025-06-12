@@ -1,6 +1,7 @@
 # Fast2D Tauri Example
 
-1. Install Rust
-2. `cargo install cargo-make`
-3. `makers install`
-6. `makers tauri dev`
+1. https://v2.tauri.app/start/prerequisites/
+2. Install Rust
+3. `cargo install cargo-make`
+4. `makers install`
+5. `makers tauri dev`
