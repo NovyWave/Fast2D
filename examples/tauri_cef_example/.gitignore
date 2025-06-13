@@ -32,9 +32,16 @@ frontend_dist/_api
 frontend_dist/index.html
 mzoon
 
-# CEF-specific files (will be added when we integrate actual CEF)
-# cef_runtime
-# cef_binary_distribution
+# CEF binaries and downloads (downloaded during build, not stored in git)
+cef_downloads/
+cef_runtime/
+cef_binary_distribution/
+*.tar.bz2
+*.tar.gz
+libcef.so*
+icudtl.dat
+v8_context_snapshot.bin
+snapshot_blob.bin
 
 # Rust build artifacts
 target/

@@ -14,9 +14,11 @@ This is a **CEF-based alternative** to the `tauri_example`, designed to solve We
 - **Fast2D Integration**: 2D graphics library with WebGL backend (will work reliably with CEF)
 
 ### Current Status
-**⚠️ DEPENDENCY CONFLICT**: CEF integration is currently blocked by dependency version conflicts:
-- MoonZoon locks `rustls-pemfile = 2.0.0`
-- Tauri CEF bindings require `rustls-pemfile >= 2.1.2`
+**✅ DEPENDENCY RESOLUTION COMPLETE**: CEF integration dependency conflicts have been resolved:
+- Updated MoonZoon `rustls-pemfile: 2.0.0 → 2.2.0` 
+- Verified compatibility with Fast2D project
+- Connected Fast2D to use local MoonZoon repository
+- CEF dependencies ready for integration
 
 ### Key Differences from tauri_example (when completed)
 - **CEF instead of Tauri**: Uses official `tauri-apps/cef-rs` bindings
@@ -48,6 +50,15 @@ makers cef_dev
 makers mzoon start  # Terminal 1
 makers cef         # Terminal 2
 ```
+
+### CEF Binary Management
+**Recommended**: CEF binaries are **downloaded during build**, not stored in git:
+- ✅ Faster cloning (no large binaries)
+- ✅ Always latest compatible version
+- ✅ Platform-specific downloads
+- ✅ No Git LFS costs or complexity
+
+CEF binaries (~100-200MB) are automatically downloaded by the build system and cached locally.
 
 ### Building
 ```bash

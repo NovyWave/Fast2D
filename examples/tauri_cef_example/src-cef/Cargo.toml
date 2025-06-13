@@ -11,15 +11,15 @@ tokio = { version = "1.0", features = ["full"] }
 # HTTP client for checking MoonZoon server
 reqwest = { version = "0.12", features = ["json"] }
 
-# Official Tauri CEF bindings (temporarily commented due to dependency conflicts with MoonZoon)
-# cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+# Official Tauri CEF bindings (framework ready - enable for production)
+cef = { path = "/home/martinkavik/repos/cef-rs/cef" }
 
 [build-dependencies]
 # For platform-specific builds
 cc = "1.0"
 
-# CEF download utility (temporarily commented due to dependency conflicts with MoonZoon)  
-# download-cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+# CEF download utility (framework ready, enable for production)
+download-cef = { path = "/home/martinkavik/repos/cef-rs/download-cef" }
 
 [[bin]]
 name = "tauri_cef_example"

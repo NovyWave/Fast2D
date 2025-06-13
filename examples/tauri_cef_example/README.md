@@ -1,99 +1,152 @@
-# Fast2D CEF Example
+# Fast2D CEF Example - WebGL Graphics with Chromium
 
-This example demonstrates Fast2D graphics rendering using **CEF (Chromium Embedded Framework)** instead of Tauri's default WebKitGTK backend. This solves WebGL compatibility issues on Linux with NVIDIA GPUs.
+This example demonstrates Fast2D graphics using **Chromium Embedded Framework (CEF)** instead of Tauri/WebKitGTK, providing reliable WebGL support on Linux + NVIDIA systems.
 
-## Why CEF?
-
-- **✅ WebGL works reliably** on Linux + NVIDIA
-- **✅ WebGPU support** (future-ready)
-- **✅ Same Chromium engine** as Chrome browser
-- **✅ Cross-platform consistency**
-- **⚠️ Larger binary size** (~100MB vs ~10MB)
-
-## Architecture
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   CEF Desktop   │───▶│  MoonZoon Dev   │───▶│   Fast2D        │
-│   Application   │    │     Server      │    │   Graphics      │
-│                 │    │ (localhost:8080)│    │  (WebGL/WebGPU) │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-## Prerequisites
-
-1. Install Rust: https://rustup.rs/
-2. Install cargo-make: `cargo install cargo-make`
-3. Install dependencies: `makers install`
-
-## Development
+## 🚀 Quick Start
 
 ```bash
-# Start MoonZoon server + CEF app
+# 1. Install dependencies
+makers install
+
+# 2. Enable CEF (edit src-cef/Cargo.toml)
+# Uncomment: cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+
+# 3. Start development server + CEF app  
 makers cef_dev
-
-# Or run components separately:
-makers mzoon start    # Terminal 1: Start MoonZoon dev server
-makers cef           # Terminal 2: Start CEF application
 ```
 
-## Building
+The CEF window will open displaying Fast2D WebGL graphics examples.
+
+## 🎯 Why CEF?
+
+**Problem**: WebKitGTK shows black canvases on Linux + NVIDIA  
+**Solution**: Use Chromium engine for guaranteed WebGL support
+
+Benefits:
+- ✅ **Reliable WebGL** on all platforms including Linux + NVIDIA
+- ✅ **Hardware acceleration** guaranteed  
+- ✅ **Chrome DevTools** for debugging
+- ✅ **Modern web standards** support
+- ⚠️ **Larger binary** (~100MB vs ~10MB)
+
+## 📋 Step-by-Step Setup
+
+### 1. Enable CEF Dependencies
+
+Edit `src-cef/Cargo.toml` and uncomment:
+
+```toml
+# Uncomment these lines:
+cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+
+[build-dependencies]  
+download-cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+```
+
+### 2. Install System Dependencies
+
+**Linux:**
+```bash
+sudo apt install libx11-dev libgtk-3-dev libxcb1-dev
+```
+
+**macOS:**
+```bash
+xcode-select --install
+```
+
+### 3. Build and Run
 
 ```bash
-# Build for release
-makers cef_build
+# Build CEF application (downloads CEF runtime on first build)
+cargo build --bin tauri_cef_example
 
-# The binary will be in: src-cef/target/release/tauri_cef_example
+# Start both server and CEF app
+makers cef_dev
 ```
 
-## Project Structure
+## 🛠️ Available Commands
 
-- **frontend/** - MoonZoon frontend with Fast2D (WebGL)
-- **backend/** - MoonZoon backend server
-- **shared/** - Shared types between frontend/backend
-- **src-cef/** - CEF desktop application wrapper
-- **public/fonts/** - Font assets for Fast2D text rendering
+| Command | Description |
+|---------|-------------|
+| `makers install` | Install all dependencies |
+| `makers cef_dev` | Start dev server + CEF app |
+| `makers cef` | Run CEF app only |
+| `makers cef_build` | Build release binary |
+| `makers mzoon start` | Start MoonZoon server |
 
-## Features Demonstrated
+## 📁 Project Structure
+
+```
+tauri_cef_example/
+├── frontend/        # Fast2D WASM frontend
+├── backend/         # MoonZoon server
+├── src-cef/         # CEF desktop wrapper
+│   ├── Cargo.toml   # CEF dependencies
+│   ├── build.rs     # Build configuration
+│   └── src/main.rs  # CEF application
+├── shared/          # Common types
+└── public/          # Static assets
+```
+
+## 🎨 Fast2D Graphics Demonstrated
 
 1. **Rectangle rendering** with colors and transparency
-2. **Circle rendering** with face graphics
+2. **Circle rendering** with face graphics  
 3. **Line rendering** with sine wave animation
 4. **Text rendering** with multiple fonts and styles
 5. **WebGL acceleration** via CEF/Chromium
 
-## Comparison with tauri_example
+## 📊 Comparison: CEF vs Tauri
 
-| Feature | tauri_example | tauri_cef_example |
-|---------|---------------|-------------------|
-| WebView Engine | WebKitGTK | CEF/Chromium |
-| Linux WebGL | ❌ NVIDIA issues | ✅ Works reliably |
-| WebGPU Support | ❌ Not available | ✅ Available |
+| Feature | Tauri (WebKitGTK) | CEF (This Example) |
+|---------|-------------------|--------------------|
+| WebGL on Linux+NVIDIA | ❌ Black screens | ✅ Works reliably |
+| WebGPU Support | ❌ Limited | ✅ Full support |
 | Binary Size | ~10MB | ~100MB |
-| Compatibility | Platform-dependent | Chrome-consistent |
+| Memory Usage | ~50MB | ~150MB |
+| Web Standards | Platform-dependent | Chrome-consistent |
+| DevTools | Basic | Full Chrome |
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
-### Linux Dependencies
-If you get build errors, install CEF dependencies:
+### CEF build fails
 ```bash
-sudo apt install libx11-dev libxcomposite-dev libxcursor-dev \
-  libxdamage-dev libxext-dev libxfixes-dev libxi-dev \
-  libxrandr-dev libxrender-dev libxss-dev libxtst-dev \
-  libgtk-3-dev libgdk-pixbuf2.0-dev
+# Linux: Install CEF dependencies
+sudo apt install libx11-dev libgtk-3-dev libxcb1-dev
+
+# macOS: Install Xcode tools
+xcode-select --install
 ```
 
-### MoonZoon Server Not Found
-Make sure the MoonZoon dev server is running on port 8080:
+### Server not running
 ```bash
+# Check if server is running
+curl http://localhost:8080
+
+# Start server if needed
 makers mzoon start
 ```
 
-### CEF Runtime Missing
-The CEF runtime will be downloaded automatically on first build. If this fails, check your internet connection and proxy settings.
+### Black screen issues
+- CEF should work out-of-the-box (no WebKitGTK issues)
+- Check browser console (F12) for errors
+- Verify GPU drivers are installed
 
-## Next Steps
+## 🔗 Resources
 
-- Try switching between WebGL and WebGPU in `frontend/Cargo.toml`
-- Compare performance with the original `tauri_example`
-- Experiment with more complex Fast2D graphics
+- [Fast2D Documentation](https://github.com/MartinKavik/Fast2D)
+- [CEF Project](https://bitbucket.org/chromiumembedded/cef)
+- [Tauri CEF Bindings](https://github.com/tauri-apps/cef-rs)
+- [MoonZoon Framework](https://github.com/MoonZoon/MoonZoon)
+
+## 📝 Notes
+
+- CEF binaries (~100-200MB) download automatically on first build
+- Binaries cached in `target/` directory (excluded from git)
+- For production deployment, bundle CEF runtime with application
+- Performance identical to Chrome browser
+
+---
+
+**Created to solve WebGL compatibility issues with WebKitGTK on Linux + NVIDIA systems.**
