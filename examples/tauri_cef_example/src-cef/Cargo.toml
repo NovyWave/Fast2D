@@ -1,0 +1,26 @@
+[package]
+name = "tauri_cef_example"
+version = "0.1.0"
+edition = "2021"
+description = "Fast2D example using CEF instead of Tauri for WebGL compatibility"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# HTTP client for checking MoonZoon server
+reqwest = { version = "0.12", features = ["json"] }
+
+# Official Tauri CEF bindings (temporarily commented due to dependency conflicts with MoonZoon)
+# cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+
+[build-dependencies]
+# For platform-specific builds
+cc = "1.0"
+
+# CEF download utility (temporarily commented due to dependency conflicts with MoonZoon)  
+# download-cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+
+[[bin]]
+name = "tauri_cef_example"
+path = "src/main.rs"

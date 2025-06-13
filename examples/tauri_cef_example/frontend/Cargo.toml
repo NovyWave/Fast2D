@@ -1,0 +1,14 @@
+[package]
+name = "frontend"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+zoon.workspace = true
+fast2d = { path = "../../../crates/fast2d", default-features = false, features = [
+    # Choose one of the following rendering APIs:
+    "webgl",
+    # "webgpu",
+    # "canvas",
+] }

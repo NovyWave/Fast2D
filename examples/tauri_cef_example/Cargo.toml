@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "frontend",
+    "backend", 
+    "shared",
+    "src-cef",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+moon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "507832338c442ee5e7d19b1aa4fc49d7034d5ed0" }
+zoon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "507832338c442ee5e7d19b1aa4fc49d7034d5ed0" }
