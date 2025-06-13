@@ -8,7 +8,7 @@ This document outlines the complete strategy for creating a `servo_example` - a 
 
 ### Current State Analysis
 - **tauri_example**: ❌ WebGL broken on Linux+NVIDIA (WebKitGTK limitations)
-- **tauri_cef_example**: ✅ WebGL working (Chromium engine, ~100MB binary)
+- **cef_example**: ✅ WebGL working (Chromium engine, ~100MB binary)
 - **servo_example** (planned): ✅ WebGL + 🚀 WebGPU potential (~30-50MB binary)
 
 ### Key Advantages of Servo Approach

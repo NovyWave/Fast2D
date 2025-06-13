@@ -1,0 +1,16 @@
+[workspace]
+members = [
+    "frontend",
+    "backend", 
+    "shared",
+    "src-cef",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[workspace.dependencies]
+moon = { path = "/home/martinkavik/repos/MoonZoon/crates/moon" }
+zoon = { path = "/home/martinkavik/repos/MoonZoon/crates/zoon" }
