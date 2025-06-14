@@ -4,3 +4,6 @@ members = [
     "crates/*"
 ]
 exclude = ["examples/tauri_example/src-tauri"]
+
+[workspace.package]
+edition = "2024"
