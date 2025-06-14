@@ -12,5 +12,5 @@ edition = "2024"
 publish = false
 
 [workspace.dependencies]
-moon = { path = "/home/martinkavik/repos/MoonZoon/crates/moon" }
-zoon = { path = "/home/martinkavik/repos/MoonZoon/crates/zoon" }
+moon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "7c5178d891cf4afbc2bbbe864ca63588b6c10f2a" }
+zoon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "7c5178d891cf4afbc2bbbe864ca63588b6c10f2a" }

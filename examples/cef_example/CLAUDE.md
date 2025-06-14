@@ -81,6 +81,7 @@ makers cef_build
 - `Makefile.toml`: Build system configuration with CEF-specific tasks
 - `src-cef/Cargo.toml`: CEF application dependencies (`cef-rs`, `winit`, `tokio`)
 - Workspace `Cargo.toml`: Defines Fast2D dependency from local path `../../../crates/fast2d`
+- CEF dependencies: Uses GitHub repository with locked commit hash for `cef` and `download-cef` crates
 
 ## Fast2D Integration Pattern
 

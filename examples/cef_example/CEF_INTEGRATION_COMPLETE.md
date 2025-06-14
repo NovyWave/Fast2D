@@ -110,10 +110,10 @@ create_browser(window_info, client, url, browser_settings);
 ## 📦 **Usage Instructions**
 
 ### **Enable CEF Integration**
-1. **Uncomment CEF dependencies** in `src-cef/Cargo.toml`:
+1. **CEF dependencies** in `src-cef/Cargo.toml` are configured with locked commit hashes:
    ```toml
-   cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
-   download-cef = { git = "https://github.com/tauri-apps/cef-rs", branch = "dev" }
+   cef = { git = "https://github.com/MartinKavik/cef-rs", rev = "1cab9177008c1faab081dc0f31c0f36260a4ca17" }
+   download-cef = { git = "https://github.com/MartinKavik/cef-rs", rev = "1cab9177008c1faab081dc0f31c0f36260a4ca17" }
    ```
 
 2. **Build with CEF**:

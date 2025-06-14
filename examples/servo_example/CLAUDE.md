@@ -65,6 +65,7 @@ makers servo
 - `Makefile.toml`: Build system with Servo-specific tasks (experimental)
 - `src-servo/Cargo.toml`: Servo application dependencies (unstable, frequently changing)
 - Workspace `Cargo.toml`: Defines Fast2D dependency from local path `../../../crates/fast2d`
+- MoonZoon dependencies: Uses GitHub repository with locked commit hash for `moon` and `zoon` crates
 
 ## Fast2D Integration Pattern
 

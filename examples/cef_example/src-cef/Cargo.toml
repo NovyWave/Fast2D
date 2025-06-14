@@ -12,14 +12,14 @@ tokio = { version = "1.0", features = ["full"] }
 reqwest = { version = "0.12", features = ["json"] }
 
 # CEF (Chromium Embedded Framework) bindings
-cef = { path = "/home/martinkavik/repos/cef-rs/cef" }
+cef = { git = "https://github.com/MartinKavik/cef-rs", rev = "1cab9177008c1faab081dc0f31c0f36260a4ca17" }
 
 [build-dependencies]
 # For platform-specific builds
 cc = "1.0"
 
 # CEF binary download utility
-download-cef = { path = "/home/martinkavik/repos/cef-rs/download-cef" }
+download-cef = { git = "https://github.com/MartinKavik/cef-rs", rev = "1cab9177008c1faab081dc0f31c0f36260a4ca17" }
 
 [[bin]]
 name = "cef_example"
