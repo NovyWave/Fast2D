@@ -1,6 +1,6 @@
-# Fast2D CEF Example - WebGL Graphics with Chromium
+# Fast2D CEF Example - Graphics with Chromium
 
-This example demonstrates Fast2D graphics using **Chromium Embedded Framework (CEF)** instead of Tauri/WebKitGTK, providing reliable WebGL support on all platforms.
+This example demonstrates Fast2D graphics using **Chromium Embedded Framework (CEF)** instead of Tauri/WebKitGTK, providing reliable graphics support on all platforms.
 
 ## 🚀 Quick Start
 
@@ -14,15 +14,15 @@ cd src-cef
 cargo run --bin cef_example
 ```
 
-A CEF window will open displaying Fast2D WebGL graphics examples with animated rectangles, faces, and sine waves.
+A CEF window will open displaying Fast2D graphics examples with animated rectangles, faces, and sine waves.
 
 ## 🎯 Why CEF?
 
 **Problem**: WebKitGTK shows black canvases on Linux + NVIDIA  
-**Solution**: Use Chromium engine for guaranteed WebGL support
+**Solution**: Use Chromium engine for guaranteed graphics support
 
 Benefits:
-- ✅ **Reliable WebGL** on all platforms including Linux + NVIDIA
+- ✅ **Reliable graphics** on all platforms including Linux + NVIDIA
 - ✅ **Hardware acceleration** guaranteed  
 - ✅ **Chrome DevTools** for debugging
 - ✅ **Modern web standards** support
@@ -107,13 +107,13 @@ cef_example/
 2. **Circle rendering** with face graphics  
 3. **Line rendering** with sine wave animation
 4. **Text rendering** with multiple fonts and styles
-5. **WebGL acceleration** via CEF/Chromium
+5. **Hardware acceleration** via CEF/Chromium
 
 ## 📊 Comparison: CEF vs Tauri
 
 | Feature | Tauri (WebKitGTK) | CEF (This Example) |
 |---------|-------------------|--------------------|
-| WebGL on Linux+NVIDIA | ❌ Black screens | ✅ Works reliably |
+| Graphics on Linux+NVIDIA | ❌ Black screens | ✅ Works reliably |
 | WebGPU Support | ❌ Limited | ✅ Full support |
 | Binary Size | ~10MB | ~100MB |
 | Memory Usage | ~50MB | ~150MB |
@@ -160,16 +160,16 @@ xcode-select --install  # macOS
 - **Build cache** stored in `src-cef/target/` directory
 - **Performance** identical to Chrome browser
 - **Multi-monitor** support with automatic primary monitor positioning
-- **WebGL** guaranteed to work (no WebKitGTK black screen issues)
+- **Graphics** guaranteed to work (no WebKitGTK black screen issues)
 
 ## 🏆 Success Criteria
 
 - ✅ **Window appears** showing Fast2D graphics
 - ✅ **Animations work** (rectangles, faces, sine waves)  
-- ✅ **No black screens** (CEF provides reliable WebGL)
+- ✅ **No black screens** (CEF provides reliable graphics)
 - ✅ **Hardware acceleration** enabled
 - ✅ **Cross-platform** compatibility
 
 ---
 
-**Alternative to Tauri for reliable WebGL graphics on all platforms, especially Linux + NVIDIA systems.**
+**Alternative to Tauri for reliable graphics rendering on all platforms, especially Linux + NVIDIA systems.**

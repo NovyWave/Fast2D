@@ -1,7 +1,7 @@
 // Fast2D CEF Example - Chromium Embedded Framework Integration
 //
 // This provides a complete alternative to Tauri's WebKitGTK backend using
-// Chromium Embedded Framework for reliable WebGL support on all platforms.
+// Chromium Embedded Framework for reliable graphics support on all platforms.
 
 use cef::{args::Args, rc::*, sandbox_info::SandboxInfo, sys, Size, Rect, *};
 use std::sync::{Arc, Mutex};
@@ -240,7 +240,7 @@ impl ImplWindowDelegate for Fast2DWindowDelegate {
             window.add_child_view(Some(&mut (&view).into()));
             
             // Set window title and size for visibility
-            let title = CefString::from("Fast2D CEF Example - WebGL Graphics");
+            let title = CefString::from("Fast2D CEF Example - Graphics");
             window.set_title(Some(&title));
             let size = Size { width: 1200, height: 800 };
             window.set_size(Some(&size));
@@ -302,7 +302,7 @@ fn main() -> std::process::ExitCode {
     }
     
     println!("✅ MoonZoon dev server ready at {}", DEV_SERVER_URL);
-    println!("🎯 Starting CEF with Fast2D WebGL graphics...");
+    println!("🎯 Starting CEF with Fast2D graphics...");
     println!();
 
     // Initialize CEF

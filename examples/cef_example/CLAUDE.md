@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Architecture
 
-This is a **CEF-based alternative** to the `tauri_example`, designed to solve WebGL compatibility issues on Linux + NVIDIA systems by using Chromium Embedded Framework instead of Tauri's WebKitGTK backend.
+This is a **CEF-based alternative** to the `tauri_example`, designed to solve graphics compatibility issues on Linux + NVIDIA systems by using Chromium Embedded Framework instead of Tauri's WebKitGTK backend.
 
 ### Core Components
 - **Frontend**: Rust/WASM frontend using MoonZoon/Zoon framework with Fast2D graphics rendering
 - **Backend**: MoonZoon backend server for development 
 - **CEF Wrapper**: Desktop application using CEF instead of Tauri  
 - **Shared**: Common types and logic shared between frontend and backend
-- **Fast2D Integration**: 2D graphics library with WebGL backend (will work reliably with CEF)
+- **Fast2D Integration**: 2D graphics library with WebGPU backend (will work reliably with CEF)
 
 ### Current Status
 **✅ DEPENDENCY RESOLUTION COMPLETE**: CEF integration dependency conflicts have been resolved:
@@ -23,7 +23,7 @@ This is a **CEF-based alternative** to the `tauri_example`, designed to solve We
 ### Key Differences from tauri_example (when completed)
 - **CEF instead of Tauri**: Uses official `tauri-apps/cef-rs` bindings
 - **Chromium WebView**: Full Chrome engine instead of WebKitGTK
-- **WebGL guaranteed**: No NVIDIA + Linux compatibility issues
+- **Graphics guaranteed**: No NVIDIA + Linux compatibility issues
 - **Larger binary**: ~100MB runtime vs ~10MB with Tauri
 
 ### Workspace Structure
@@ -94,7 +94,7 @@ The frontend demonstrates Fast2D canvas integration (identical to `tauri_example
 
 ### CEF Application (`src-cef/src/main.rs`)
 - **Async server check**: Waits for MoonZoon dev server before starting CEF
-- **Hardware acceleration**: Enables WebGL and GPU acceleration
+- **Hardware acceleration**: Enables GPU acceleration
 - **Chrome runtime**: Uses full Chrome features for best compatibility
 
 ### Build Configuration (`src-cef/build.rs`)
@@ -108,7 +108,7 @@ The frontend demonstrates Fast2D canvas integration (identical to `tauri_example
 
 ## Benefits Over tauri_example
 
-1. **WebGL reliability**: Works on Linux + NVIDIA without driver issues
+1. **Graphics reliability**: Works on Linux + NVIDIA without driver issues
 2. **WebGPU support**: Access to modern graphics APIs
 3. **Chrome consistency**: Same rendering as Chrome browser
 4. **Future-proof**: Will work with upcoming web standards
@@ -133,5 +133,5 @@ The frontend demonstrates Fast2D canvas integration (identical to `tauri_example
 
 ### Performance
 - CEF performs identically to Chrome browser
-- WebGL should work smoothly on all platforms
+- Graphics rendering should work smoothly on all platforms
 - No need for software rendering fallbacks
