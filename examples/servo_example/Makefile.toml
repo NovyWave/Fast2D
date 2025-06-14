@@ -1,0 +1,146 @@
+[config]
+default_to_workspace = false
+min_version = "0.35.13"
+unstable_features = ["CTRL_C_HANDLING"]
+skip_core_tasks = true
+
+[config.modify_core_tasks]
+private = true
+namespace = "default"
+
+#######  MAIN TASKS  #######
+
+[tasks.install]
+description = "Install all dependencies. It's NoOp if all deps are already installed."
+dependencies = [
+    "install_wasm_target", 
+    "install_mzoon", 
+    "install_servo_deps",
+]
+
+[tasks.servo]
+description = "Run Servo application (experimental)"
+command = "cargo"
+args = ["run", "--manifest-path", "src-servo/Cargo.toml", "${@}"]
+
+[tasks.servo_build]
+description = "Build Servo application for release (experimental)"
+command = "cargo"
+args = ["build", "--release", "--manifest-path", "src-servo/Cargo.toml"]
+
+[tasks.servo_dev]
+description = "Start MoonZoon server and Servo app concurrently"
+dependencies = ["servo_dev_concurrent"]
+
+[tasks.dev]
+description = "Start both MoonZoon server and Servo app concurrently (experimental)"
+dependencies = ["servo_dev_concurrent"]
+
+[tasks.servo_dev_concurrent]
+description = "Start MoonZoon server and Servo app in parallel"
+run_task = { name = ["mzoon_start_bg", "servo_dev_wait"], parallel = true }
+
+[tasks.mzoon_start_bg]
+description = "Start MoonZoon server in background"
+command = "mzoon/bin/mzoon"
+args = ["start"]
+
+[tasks.servo_dev_wait]
+description = "Wait a bit then start Servo app"
+dependencies = ["wait_for_server"]
+command = "cargo"
+args = ["run", "--manifest-path", "src-servo/Cargo.toml"]
+
+[tasks.wait_for_server]
+description = "Wait for MoonZoon server to be ready"
+script = [
+    "echo '⏳ Waiting for MoonZoon server to start...'",
+    "sleep 3",
+    "echo '🚀 Starting Servo application...'",
+]
+
+[tasks.mzoon]
+description = "Run MZoon"
+command = "mzoon/bin/mzoon"
+args = ["${@}"]
+
+######  HELPER TASKS  ######
+
+[tasks.install_wasm_target]
+description = "Install Rust target `wasm32-unknown-unknown`"
+command = "rustup"
+args = ["target", "add", "wasm32-unknown-unknown"]
+
+[tasks.install_servo_deps]
+description = "Install Servo dependencies for Linux (experimental)"
+condition = { platforms = ["linux"] }
+script = [
+    "echo '🧪 Installing Servo dependencies for Linux (experimental)...'",
+    "echo '⚠️  NOTE: Servo is experimental and may require additional system dependencies'",
+    "sudo apt update || true",
+    "sudo apt install -y libx11-dev libxcomposite-dev libxcursor-dev libxdamage-dev libxext-dev libxfixes-dev libxi-dev libxrandr-dev libxrender-dev libxss-dev libxtst-dev libgtk-3-dev libgdk-pixbuf2.0-dev libgl1-mesa-dev libegl1-mesa-dev || echo 'Some packages may already be installed'",
+    "echo '⚠️  Additional dependencies may be needed for Servo compilation'",
+    "echo '💡 Check Servo documentation if build fails: https://github.com/servo/servo'",
+    "echo '✅ Basic Servo dependencies installed'",
+]
+
+[tasks.install_mzoon]
+description = "Install MoonZoon CLI (mzoon) locally"
+command = "cargo"
+args = [
+    "install", 
+    "mzoon", 
+    "--git", 
+    "https://github.com/MoonZoon/MoonZoon",
+    "--locked",
+    "--rev",
+    "507832338c442ee5e7d19b1aa4fc49d7034d5ed0",
+    "--root",
+    "mzoon",
+]
+
+######  EXPERIMENTAL TASKS  ######
+
+[tasks.servo_check]
+description = "Check if Servo dependencies compile (without running)"
+command = "cargo"
+args = ["check", "--manifest-path", "src-servo/Cargo.toml"]
+
+[tasks.servo_clean]
+description = "Clean Servo build artifacts"
+command = "cargo"
+args = ["clean", "--manifest-path", "src-servo/Cargo.toml"]
+
+[tasks.experimental_notice]
+description = "Show experimental status notice"
+script = [
+    "echo '🧪 EXPERIMENTAL: servo_example'",
+    "echo '⚠️  WARNING: Servo is not production-ready as of mid-2025'",
+    "echo '   This is a research project to explore Servo embedding'",
+    "echo '   For production use, consider cef_example instead'",
+    "echo ''",
+    "echo '📚 Available commands:'",
+    "echo '   makers install        - Install dependencies'",
+    "echo '   makers mzoon start    - Start MoonZoon server'",
+    "echo '   makers servo          - Run Servo app (experimental)'",
+    "echo '   makers servo_dev      - Start server + Servo concurrently'",
+    "echo '   makers servo_check    - Check if Servo compiles'",
+    "echo '   makers servo_build    - Build Servo for release'",
+    "echo ''",
+]
+
+[tasks.clean]
+description = "Clean all build artifacts"
+dependencies = ["servo_clean", "mzoon_clean"]
+
+[tasks.mzoon_clean]
+description = "Clean MoonZoon build artifacts"
+command = "mzoon/bin/mzoon"
+args = ["build", "--release", "--frontend-dist"]
+script = [
+    "rm -rf target/",
+    "rm -rf frontend/pkg/",
+    "rm -rf frontend/wasm-bindgen*/",
+    "rm -rf frontend_dist/",
+    "echo '✅ MoonZoon artifacts cleaned'",
+]

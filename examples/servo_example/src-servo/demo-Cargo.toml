@@ -1,0 +1,15 @@
+[workspace]
+
+[package]
+name = "servo_demo"
+version = "0.1.0"
+edition = "2021"
+description = "Fast2D Servo integration demo - shows window structure without full compilation"
+
+[[bin]]
+name = "servo_demo"
+path = "src/demo.rs"
+
+[dependencies]
+# Minimal dependencies for demo
+winit = "0.30"
