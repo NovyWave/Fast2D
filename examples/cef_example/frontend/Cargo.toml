@@ -8,7 +8,7 @@ publish.workspace = true
 zoon.workspace = true
 fast2d = { path = "../../../crates/fast2d", default-features = false, features = [
     # Choose one of the following rendering APIs:
-    # "webgl",
-    "webgpu",
+    "webgl",
+    # "webgpu",
     # "canvas",
 ] }
