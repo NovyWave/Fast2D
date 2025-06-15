@@ -119,6 +119,21 @@ The frontend demonstrates Fast2D canvas integration (identical to cef_example an
 - **Runtime Failures**: Servo crashes or fails to render content
 - **Missing Features**: Web platform APIs not implemented in Servo
 
+### Known Servo Canvas Bug (as of 2025)
+**Issue**: Servo panics when using canvas elements with the following error:
+```
+thread 'Script(1,1)' panicked at servo-build/components/script/canvas_state.rs:1282:39:
+called `Result::unwrap()` on an `Err` value: Disconnected
+```
+
+**Details**: 
+- This occurs in Servo's canvas text measurement code (`MeasureText`)
+- The IPC channel between canvas threads becomes disconnected
+- Affects both custom builds and official Servo releases
+- Makes canvas-based applications (including Fast2D) unusable in Servo
+
+**Status**: This is a Servo engine bug, not an issue with our code. The same crash occurs with the official Servo binary.
+
 ### Build Fix for C++ Header Issues
 If you encounter build errors about missing C++ headers (like `'array' file not found`):
 

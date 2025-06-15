@@ -230,6 +230,7 @@ fn root() -> impl Element {
 }
 
 
+
 fn panel_with_canvas(example_objects: ExampleObjects) -> impl Element {
     El::new()
         .s(Align::center())
