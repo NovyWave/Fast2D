@@ -1,7 +1,10 @@
 use cfg_if::cfg_if;
 
 cfg_if! {
-    if #[cfg(any(feature = "webgl", feature = "webgpu"))] {
+    if #[cfg(feature = "native")] {
+        mod backend_wgpu_native;
+        pub use backend_wgpu_native::*;
+    } else if #[cfg(any(feature = "webgl", feature = "webgpu"))] {
         mod backend_wgpu;
         pub use backend_wgpu::*;
     } else if #[cfg(feature = "canvas")] {
