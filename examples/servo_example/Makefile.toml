@@ -22,11 +22,13 @@ dependencies = [
 description = "Run Servo application (experimental)"
 command = "cargo"
 args = ["run", "--manifest-path", "src-servo/Cargo.toml", "${@}"]
+env = { "BINDGEN_EXTRA_CLANG_ARGS" = "-I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13" }
 
 [tasks.servo_build]
 description = "Build Servo application for release (experimental)"
 command = "cargo"
 args = ["build", "--release", "--manifest-path", "src-servo/Cargo.toml"]
+env = { "BINDGEN_EXTRA_CLANG_ARGS" = "-I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13" }
 
 [tasks.servo_dev]
 description = "Start MoonZoon server and Servo app concurrently"
@@ -50,6 +52,7 @@ description = "Wait a bit then start Servo app"
 dependencies = ["wait_for_server"]
 command = "cargo"
 args = ["run", "--manifest-path", "src-servo/Cargo.toml"]
+env = { "BINDGEN_EXTRA_CLANG_ARGS" = "-I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13" }
 
 [tasks.wait_for_server]
 description = "Wait for MoonZoon server to be ready"
@@ -105,6 +108,7 @@ args = [
 description = "Check if Servo dependencies compile (without running)"
 command = "cargo"
 args = ["check", "--manifest-path", "src-servo/Cargo.toml"]
+env = { "BINDGEN_EXTRA_CLANG_ARGS" = "-I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13" }
 
 [tasks.servo_clean]
 description = "Clean Servo build artifacts"

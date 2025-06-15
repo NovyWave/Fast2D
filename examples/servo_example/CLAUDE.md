@@ -119,6 +119,23 @@ The frontend demonstrates Fast2D canvas integration (identical to cef_example an
 - **Runtime Failures**: Servo crashes or fails to render content
 - **Missing Features**: Web platform APIs not implemented in Servo
 
+### Build Fix for C++ Header Issues
+If you encounter build errors about missing C++ headers (like `'array' file not found`):
+
+1. **Install Required Packages** (if not already installed):
+   ```bash
+   sudo apt install -y libstdc++-13-dev libclang-18-dev
+   ```
+
+2. **Environment Variable Fix**: The `Makefile.toml` has been updated to automatically set the required environment variable `BINDGEN_EXTRA_CLANG_ARGS` for all Servo tasks. This points bindgen to the correct C++ include directories.
+
+3. **Manual Override** (if needed):
+   ```bash
+   export BINDGEN_EXTRA_CLANG_ARGS="-I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13"
+   ```
+
+This fix resolves the `mozangle` crate compilation issues with missing C++ standard library headers.
+
 ### Linux-Specific
 - Install extensive development headers for Servo compilation
 - May require cutting-edge Rust nightly toolchain
