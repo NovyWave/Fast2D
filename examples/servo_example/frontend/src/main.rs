@@ -225,37 +225,10 @@ fn root() -> impl Element {
                 .s(Gap::both(10))
                 .s(Scrollbars::both())
                 .s(Padding::all(10))
-                .item(test_element())
-                // Comment out Fast2D canvas for now to test basic rendering
-                // .items(examples().map(panel_with_canvas))
+                .items(examples().map(panel_with_canvas))
         )
 }
 
-// Simple test element to verify basic rendering works
-fn test_element() -> impl Element {
-    console::log("🧪 Creating test element...");
-    El::new()
-        .s(Width::fill().max(650))
-        .s(Height::exact(200))
-        .s(Background::new().color(color!("Red")))
-        .s(Borders::all(Border::new().color(color!("White")).width(2)))
-        .s(Padding::all(20))
-        .child(
-            Column::new()
-                .s(Gap::both(10))
-                .items([
-                    El::new()
-                        .s(Font::new().size(24).color(color!("White")))
-                        .child("🎯 Servo Rendering Test"),
-                    El::new()
-                        .s(Font::new().size(16).color(color!("Yellow")))
-                        .child("If you can see this, basic HTML rendering works!"),
-                    El::new()
-                        .s(Font::new().size(14).color(color!("Cyan")))
-                        .child("Fast2D canvas tests are below (may fail)"),
-                ])
-        )
-}
 
 fn panel_with_canvas(example_objects: ExampleObjects) -> impl Element {
     El::new()
