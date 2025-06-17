@@ -1,0 +1,36 @@
+[package]
+name = "blade_example"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "blade_example"
+path = "src/main.rs"
+
+[dependencies]
+# Windowing (keep Tao - proven to work)
+tao = "0.30"
+
+# Graphics (Blade instead of WGPU)
+blade-graphics = "0.5"
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Error handling
+anyhow = "1.0"
+
+# Fast2D (using existing native backend for now)
+fast2d = { path = "../../crates/fast2d", features = ["native"] }
+
+# Font assets
+include_dir = "0.7"
+
+[target.'cfg(windows)'.dependencies]
+# Windows-specific dependencies if needed
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# macOS-specific dependencies if needed
+
+[target.'cfg(unix)'.dependencies]
+# Linux-specific dependencies if needed
