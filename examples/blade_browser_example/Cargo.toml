@@ -1,0 +1,20 @@
+[workspace]
+resolver = "3"
+members = [
+    "frontend",
+    "backend", 
+    "shared",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace.dependencies]
+# MoonZoon framework - same version as browser_example
+zoon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "7c5178d891cf4afbc2bbbe864ca63588b6c10f2a" }
+moon = { git = "https://github.com/MoonZoon/MoonZoon", rev = "7c5178d891cf4afbc2bbbe864ca63588b6c10f2a" }
+
+# Blade Graphics WebGPU backend - latest commit with WebGPU support
+blade-graphics = { git = "https://github.com/MartinKavik/blade", rev = "711f926" }

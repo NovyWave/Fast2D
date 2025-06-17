@@ -11,8 +11,9 @@ path = "src/main.rs"
 # Windowing (keep Tao - proven to work)
 tao = "0.30"
 
-# Graphics (Blade instead of WGPU)
-blade-graphics = "0.5"
+# Graphics (Blade instead of WGPU) - using MartinKavik fork with WebGPU support
+blade-graphics = { git = "https://github.com/MartinKavik/blade", rev = "711f9264ee4add9aa9e5adb9fe27b935513cf553" }
+blade-macros = { git = "https://github.com/MartinKavik/blade", rev = "711f9264ee4add9aa9e5adb9fe27b935513cf553" }
 
 # Async runtime
 tokio = { version = "1.0", features = ["full"] }

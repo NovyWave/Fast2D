@@ -4,6 +4,9 @@ cfg_if! {
     if #[cfg(feature = "native")] {
         mod backend_wgpu_native;
         pub use backend_wgpu_native::*;
+    } else if #[cfg(feature = "webgpu-blade")] {
+        mod backend_blade;
+        pub use backend_blade::*;
     } else if #[cfg(any(feature = "webgl", feature = "webgpu"))] {
         mod backend_wgpu;
         pub use backend_wgpu::*;

@@ -1,0 +1,12 @@
+[package]
+name = "shared"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+
+# MoonZoon shared utilities
+zoon = { workspace = true }

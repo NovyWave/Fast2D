@@ -3,7 +3,7 @@ resolver = "3"
 members = [
     "crates/*"
 ]
-exclude = ["examples/tauri_example/src-tauri", "examples/native_tao_example"]
+exclude = ["examples/tauri_example/src-tauri", "examples/native_tao_example", "examples/blade_example"]
 
 [workspace.package]
 edition = "2024"

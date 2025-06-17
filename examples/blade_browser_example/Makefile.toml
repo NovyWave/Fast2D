@@ -1,0 +1,28 @@
+# Build automation for Blade Browser Example
+
+[config]
+default_to_workspace = false
+
+[tasks.default]
+alias = "serve"
+
+[tasks.serve]
+description = "Run the application with mzoon"
+command = "mzoon"
+args = ["start"]
+
+[tasks.build]
+description = "Build the application for production"
+command = "mzoon" 
+args = ["build", "--release"]
+
+[tasks.build-webgpu]
+description = "Build with WebGPU unstable features"
+env = { RUSTFLAGS = "--cfg=web_sys_unstable_apis" }
+command = "mzoon"
+args = ["build", "--release"]
+
+[tasks.clean]
+description = "Clean build artifacts"
+command = "mzoon"
+args = ["clean"]

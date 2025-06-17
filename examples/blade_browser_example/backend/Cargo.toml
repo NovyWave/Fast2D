@@ -1,0 +1,12 @@
+[package]
+name = "backend"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# MoonZoon backend framework
+moon.workspace = true
+
+# Shared types
+shared = { path = "../shared" }

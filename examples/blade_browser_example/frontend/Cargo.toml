@@ -1,0 +1,21 @@
+[package]
+name = "frontend"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+# MoonZoon frontend framework
+zoon.workspace = true
+
+# Fast2D with Blade Graphics WebGPU backend
+fast2d = { path = "../../../crates/fast2d", features = ["webgpu-blade"] }
+
+# Shared types
+shared = { path = "../shared" }
+
+[lib]
+name = "frontend"
+path = "src/main.rs"
+crate-type = ["cdylib"]
+

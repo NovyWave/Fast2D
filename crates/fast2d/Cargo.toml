@@ -31,13 +31,31 @@ glyphon = { version = "0.9.0", default-features = false, optional = true }
 lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", default-features = false, optional = true }
 wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false, optional = true }
 
+# Blade-inspired WebGPU (browser-compatible WebGPU using Blade patterns)
+# Note: Pure Blade Graphics is for native apps, this uses WebGPU with Blade-style API
+
 # Native feature dependencies
 raw-window-handle = { version = "0.6", optional = true }
 
 [features]
 default = []
 
-# Web backends (existing)
+# Blade Graphics backends (Blade-inspired WebGPU for browser)
+webgpu-blade = [
+    "web",
+    "dep:wgpu",
+    "wgpu/webgpu",
+    "dep:bytemuck",
+    "dep:glyphon",
+]
+# Future: webgl-blade support
+# webgl-blade = [
+#     "web", 
+#     "dep:blade-graphics",
+#     "dep:blade-macros",
+# ]
+
+# Legacy backends (for compatibility)
 webgl = [
     "web",
     "dep:wgpu",
@@ -60,8 +78,6 @@ canvas = [
     "web",
     "dep:ttf-parser",
 ]
-
-# Native backend (new)
 native = [
     "dep:wgpu",
     "wgpu/vulkan",

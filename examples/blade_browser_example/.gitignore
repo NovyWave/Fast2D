@@ -1,0 +1,47 @@
+# Environment files
+.env
+
+# Rust build artifacts
+target
+
+# MoonZoon frontend build artifacts
+frontend/wasm-bindgen*
+frontend/binaryen
+frontend/pkg
+frontend_dist/_api
+frontend_dist/index.html
+
+# MoonZoon configuration overrides
+MoonZoonCustom.toml
+
+# MoonZoon CLI and tooling
+mzoon
+
+# Node.js dependencies
+node_modules
+
+# Build logs and temporary files
+*.log
+mzoon.log
+final_test.log
+test_8087.log
+
+# Backend private directory contents (but keep the directory)
+backend/private/*
+!backend/private/.gitkeep
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
