@@ -1,9 +1,8 @@
 use crate::Object2d;
 use web_sys::HtmlCanvasElement;
 use wgpu::util::DeviceExt;
-use glyphon::{Shaping, Buffer as GlyphonBuffer, TextArea, Attrs, TextBounds, Metrics, Family as GlyphonFamily, TextRenderer, TextAtlas, SwashCache, Cache, Viewport, Resolution, ColorMode};
+use glyphon::{Shaping, Buffer as GlyphonBuffer, Attrs, Metrics, Family as GlyphonFamily, TextRenderer, TextAtlas, SwashCache, Cache, Viewport, Resolution, ColorMode};
 use crate::backend::backend_blade::FONT_SYSTEM;
-use web_sys::wasm_bindgen::UnwrapThrowExt;
 
 /// Rectangle vertex for Blade-style rendering
 #[repr(C)]
@@ -766,7 +765,7 @@ impl CanvasWrapper {
     }
     
     /// Render text using Blade WebGPU with glyphon
-    fn render_text(&self, render_pass: &mut wgpu::RenderPass, text: &crate::Text, _canvas_width: f32, _canvas_height: f32) {
+    fn render_text(&self, _render_pass: &mut wgpu::RenderPass, text: &crate::Text, _canvas_width: f32, _canvas_height: f32) {
         // Check if we have all required text rendering components - simplified for now
         if self.text_renderer.is_none() {
             web_sys::console::log_1(&"⚠️ Text rendering components not available".into());

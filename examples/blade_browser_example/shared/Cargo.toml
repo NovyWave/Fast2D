@@ -6,7 +6,7 @@ publish.workspace = true
 
 [dependencies]
 # Serialization
-serde = { version = "1.0", features = ["derive"] }
+# No dependencies needed for now
 
 # MoonZoon shared utilities
 zoon = { workspace = true }

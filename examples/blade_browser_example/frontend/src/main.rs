@@ -226,7 +226,7 @@ async fn canvas_with_example(mut example_objects: ExampleObjects) -> impl Elemen
 
     let dom_canvas = zoon_canvas.raw_el_mut().dom_element();
     
-    // Use Fast2D with Blade Graphics webgpu-blade backend
+    // Use Fast2D with Blade Graphics WebGPU backend
     let mut canvas_wrapper = fast2d::CanvasWrapper::new_with_canvas(dom_canvas).await;
     canvas_wrapper.update_objects(move |objects| {
         mem::swap(objects, &mut example_objects)

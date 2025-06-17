@@ -8,5 +8,4 @@ publish.workspace = true
 # MoonZoon backend framework
 moon.workspace = true
 
-# Shared types
-shared = { path = "../shared" }
+# No shared dependencies needed

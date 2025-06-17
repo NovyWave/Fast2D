@@ -16,11 +16,7 @@ description = "Build the application for production"
 command = "mzoon" 
 args = ["build", "--release"]
 
-[tasks.build-webgpu]
-description = "Build with WebGPU unstable features"
-env = { RUSTFLAGS = "--cfg=web_sys_unstable_apis" }
-command = "mzoon"
-args = ["build", "--release"]
+# WebGPU features are now stable, no special build task needed
 
 [tasks.clean]
 description = "Clean build artifacts"

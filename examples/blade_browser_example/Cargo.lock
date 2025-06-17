@@ -333,7 +333,6 @@ name = "backend"
 version = "0.1.0"
 dependencies = [
  "moon",
- "shared",
 ]
 
 [[package]]
@@ -2305,7 +2304,6 @@ dependencies = [
 name = "shared"
 version = "0.1.0"
 dependencies = [
- "serde",
  "zoon",
 ]
 

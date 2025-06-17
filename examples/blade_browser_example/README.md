@@ -5,13 +5,13 @@ A web-based Fast2D application using the Blade Graphics WebGPU backend, combinin
 ## Overview
 
 This example demonstrates:
-- **Blade Graphics Architecture**: Using Blade Graphics design patterns for web
+- **Blade Graphics Backend**: Using Blade Graphics WebGPU backend for web
 - **WebGPU Backend**: Modern GPU API through WebGPU-enabled browsers
 - **Fast2D Integration**: 2D graphics primitives with Blade-inspired rendering
 - **MoonZoon Framework**: Full-stack Rust web development
 - **WebGPU Required**: Only works in WebGPU-enabled browsers (Chrome 113+, Edge 113+)
 
-**Note**: This example uses Blade Graphics architecture and patterns, but currently implements WebGPU rendering directly since Blade Graphics is primarily designed for native applications.
+**Note**: This example implements Blade Graphics WebGPU backend adapted for browser use.
 
 ## Features
 
@@ -70,7 +70,7 @@ cargo make serve
 
 Open http://localhost:8087 in a browser.
 
-**Note**: This example currently uses the Fast2D canvas backend for maximum browser compatibility. The Blade WebGPU integration is prepared but not fully implemented yet.
+**Note**: The Blade WebGPU backend includes coordinate normalization fixes and text rendering infrastructure.
 
 ### Production Build
 

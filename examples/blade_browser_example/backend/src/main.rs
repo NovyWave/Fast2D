@@ -59,8 +59,8 @@ async fn frontend() -> Frontend {
         )
 }
 
-async fn up_msg_handler(_: UpMsgRequest<shared::AppConfig>) {
-    // Handle frontend messages if needed
+async fn up_msg_handler(_: UpMsgRequest<()>) {
+    // No message handling needed
 }
 
 #[moon::main]
