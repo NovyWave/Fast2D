@@ -3,11 +3,10 @@
 //! This module manages all GPU resources, pipelines, and rendering state needed to draw 2D graphics efficiently.
 //! It is designed to be beginner-friendly and well-documented for those new to graphics programming.
 
-use wgpu::{Device, Queue, Surface, SurfaceConfiguration, Texture, BindGroup, Buffer as WgpuBuffer};
+use wgpu::{Device, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, BindGroup, Buffer as WgpuBuffer};
 use super::MSAA_SAMPLE_COUNT;
 use glyphon::Viewport;
 use bytemuck;
-// SurfaceTarget no longer needed in current WGPU version
 use web_sys::HtmlCanvasElement;
 use glyphon::{Cache, SwashCache, TextAtlas, TextRenderer, Resolution, ColorMode};
 use wgpu::util::DeviceExt;
@@ -126,7 +125,7 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
     let instance = wgpu::Instance::default();
     // Create a surface from the HTML canvas
     let surface = instance
-        .create_surface(canvas)
+        .create_surface(SurfaceTarget::Canvas(canvas))
         .unwrap_throw();
 
     // Request a suitable GPU adapter (graphics card)
