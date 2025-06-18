@@ -58,7 +58,7 @@ impl BladeApp {
         // Create triangle rendering pipeline
         let triangle_pipeline = Self::create_triangle_pipeline(&context, &surface)?;
         
-        // TODO: Temporarily disable rectangle pipeline due to shader issue
+        // TODO: Temporarily disable rectangle pipeline due to Naga UniqueArena error
         // let (rectangle_pipeline, rectangle_vertex_buffer) = 
         //     Self::create_rectangle_pipeline(&context, &surface)?;
         let rectangle_pipeline = None;
@@ -110,25 +110,27 @@ impl BladeApp {
     
     /// Render current frame - TEST for Blade rendering stability
     pub fn render(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        // Skip rendering for the first few frames to let things settle
-        if self.frame_skip_count < 5 {
-            self.frame_skip_count += 1;
-            println!("⏳ Skipping frame {} to let graphics settle", self.frame_skip_count);
-            return Ok(());
-        }
+        // Don't skip any frames - render immediately
+        self.frame_skip_count += 1;
         
         // Now try actual rendering with triangle
-        if self.frame_skip_count == 5 {
+        if self.frame_skip_count == 3 {
             println!("🎨 Starting triangle rendering...");
             self.frame_skip_count += 1;
         }
         
         println!("🔍 Attempting frame acquisition...");
         
-        // Acquire frame with proper error handling (only blocking method available)
+        // Acquire frame - now handles VK_NOT_READY gracefully
         let frame = self.surface.acquire_frame();
         
-        println!("✅ Frame acquired successfully!");
+        // Check if frame acquisition was successful
+        if !frame.is_valid() {
+            // Frame not ready - this is normal, just skip silently
+            return Ok(());
+        }
+        
+        println!("✅ Frame acquired successfully! Beginning render pass...");
         
         // Create command encoder with proper descriptor - reduced buffer count for stability
         let mut command_encoder = self.context.create_command_encoder(gpu::CommandEncoderDesc {
@@ -139,11 +141,11 @@ impl BladeApp {
         // Start encoding
         command_encoder.start();
         
-        // Create render targets with dark background
+        // Create render targets with debug background
         let render_targets = gpu::RenderTargetSet {
             colors: &[gpu::RenderTarget {
                 view: frame.texture_view(),
-                init_op: gpu::InitOp::Clear(gpu::TextureColor::OpaqueBlack), // Black background
+                init_op: gpu::InitOp::Clear(gpu::TextureColor::White), // White background to contrast with magenta triangle
                 finish_op: gpu::FinishOp::Store,
             }],
             depth_stencil: None,
@@ -155,24 +157,33 @@ impl BladeApp {
             
             // Draw triangle (simple red triangle to test)
             if let Some(ref pipeline) = self.triangle_pipeline {
+                println!("🔺 Drawing triangle with pipeline...");
                 let mut pipeline_encoder = render_encoder.with(pipeline);
                 pipeline_encoder.draw(0, 3, 0, 1); // Draw 3 vertices for triangle
+                println!("✅ Triangle draw call issued");
+            } else {
+                println!("❌ No triangle pipeline available!");
             }
             
             // Draw rectangles (temporarily disabled)
             // self.render_rectangles(&mut render_encoder);
         }
         
+        println!("📦 Submitting command buffer...");
+        
         // Submit commands and get sync point for explicit control
         let sync_point = self.context.submit(&mut command_encoder);
         
-        // Wait for completion with reasonable timeout to avoid fence errors
-        let wait_success = self.context.wait_for(&sync_point, 16); // 16ms timeout (~60fps)
+        // Wait for completion with longer timeout to ensure frame finishes
+        let wait_success = self.context.wait_for(&sync_point, 100); // 100ms timeout for debugging
         if !wait_success {
             println!("⚠️  Frame timeout - GPU may be busy");
+        } else {
+            println!("✅ Frame completed successfully");
         }
         
         // Frame is automatically presented when dropped in Blade
+        println!("🎬 Frame presented");
         
         Ok(())
     }
@@ -213,7 +224,7 @@ impl BladeApp {
                 depth: 1,
             },
             usage: gpu::TextureUsage::TARGET,
-            display_sync: gpu::DisplaySync::Recent, // Try Recent instead of Block for less aggressive sync
+            display_sync: gpu::DisplaySync::Block, // Change back to Block for reliable presentation
             transparent: false,
             ..Default::default()
         }
@@ -232,6 +243,7 @@ impl BladeApp {
         // Get surface format from surface info
         let surface_info = surface.info();
         let surface_format = surface_info.format;
+        println!("🔍 Surface format: {:?}", surface_format);
         
         // Create render pipeline for triangle
         let pipeline = context.create_render_pipeline(gpu::RenderPipelineDesc {
@@ -323,13 +335,13 @@ impl BladeApp {
         Ok((pipeline, vertex_buffer))
     }
     
-    /// Create rectangle vertices as triangulated quads
+    /// Create rectangle vertices as triangulated quads (using NDC coordinates for now)
     fn create_rectangle_vertices() -> Vec<RectangleVertex> {
         let mut vertices = Vec::new();
         
-        // Rectangle 1: Purple rectangle
-        let rect1_color = [0.2, 0.0, 0.4, 1.0];
-        let (x1, y1, w1, h1) = (100.0, 100.0, 200.0, 150.0);
+        // Rectangle 1: Blue rectangle (top-left)
+        let rect1_color = [0.0, 0.0, 1.0, 1.0]; // Blue
+        let (x1, y1, w1, h1) = (-0.8, 0.2, 0.6, 0.6); // NDC coordinates
         vertices.extend_from_slice(&[
             // Triangle 1
             RectangleVertex { position: [x1, y1], color: rect1_color },           // Bottom-left
@@ -341,9 +353,9 @@ impl BladeApp {
             RectangleVertex { position: [x1, y1 + h1], color: rect1_color },     // Top-left
         ]);
         
-        // Rectangle 2: Green rectangle
-        let rect2_color = [0.0, 0.6, 0.0, 1.0];
-        let (x2, y2, w2, h2) = (350.0, 200.0, 150.0, 100.0);
+        // Rectangle 2: Green rectangle (top-right)
+        let rect2_color = [0.0, 1.0, 0.0, 1.0]; // Green
+        let (x2, y2, w2, h2) = (0.1, 0.1, 0.7, 0.4); // NDC coordinates
         vertices.extend_from_slice(&[
             // Triangle 1
             RectangleVertex { position: [x2, y2], color: rect2_color },           // Bottom-left
@@ -355,9 +367,9 @@ impl BladeApp {
             RectangleVertex { position: [x2, y2 + h2], color: rect2_color },     // Top-left
         ]);
         
-        // Rectangle 3: Orange rectangle
-        let rect3_color = [0.8, 0.4, 0.0, 1.0];
-        let (x3, y3, w3, h3) = (50.0, 350.0, 300.0, 80.0);
+        // Rectangle 3: Orange rectangle (bottom)
+        let rect3_color = [1.0, 0.5, 0.0, 1.0]; // Orange
+        let (x3, y3, w3, h3) = (-0.5, -0.8, 1.0, 0.3); // NDC coordinates
         vertices.extend_from_slice(&[
             // Triangle 1
             RectangleVertex { position: [x3, y3], color: rect3_color },           // Bottom-left
@@ -377,6 +389,8 @@ impl BladeApp {
         if let (Some(ref pipeline), Some(ref vertex_buffer)) = 
             (&self.rectangle_pipeline, &self.rectangle_vertex_buffer) {
             
+            println!("🔲 Drawing rectangles with pipeline...");
+            
             // Render rectangles with simple vertex approach
             let mut pipeline_encoder = render_encoder.with(pipeline);
             
@@ -385,6 +399,10 @@ impl BladeApp {
             
             // Draw rectangles (18 vertices = 6 triangles = 3 rectangles)
             pipeline_encoder.draw(0, 18, 0, 1);
+            
+            println!("✅ Rectangle draw call issued");
+        } else {
+            println!("❌ No rectangle pipeline available!");
         }
     }
     

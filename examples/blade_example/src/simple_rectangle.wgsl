@@ -15,11 +15,8 @@ struct VertexOutput {
 fn vs_main(input: VertexInput) -> VertexOutput {
     var output: VertexOutput;
     
-    // Convert to clip space (simple orthographic projection for 2D)
-    let clip_x = (input.position.x / 400.0) - 1.0; // Assuming 800px width
-    let clip_y = 1.0 - (input.position.y / 300.0); // Assuming 600px height, flip Y
-    
-    output.clip_position = vec4<f32>(clip_x, clip_y, 0.0, 1.0);
+    // Input positions are already in NDC coordinates [-1, 1]
+    output.clip_position = vec4<f32>(input.position, 0.0, 1.0);
     output.color = input.color;
     
     return output;

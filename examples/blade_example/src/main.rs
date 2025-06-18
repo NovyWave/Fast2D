@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     // Create event loop and window (unchanged from Tao example)
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Fast2D Blade Experiment - Resize Stability Test")
+        .with_title("🔺 MAGENTA TRIANGLE - LOOK FOR THIS WINDOW")
         .with_inner_size(tao::dpi::LogicalSize::new(800, 600))
         .build(&event_loop)?;
     
@@ -35,10 +35,14 @@ async fn main() -> Result<()> {
     println!("  Window Resize - Main test: smooth without white flashing");
     println!("  Close window to exit.");
     
-    // Request initial draw
+    // Request initial draw immediately
     app.request_redraw();
     
-    // Event loop - same pattern as Tao example
+    // Also request redraw after a delay to ensure it happens
+    std::thread::sleep(std::time::Duration::from_millis(100));
+    app.request_redraw();
+    
+    // Event loop - use Wait instead of Poll to reduce CPU usage and frame pressure
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Wait;
         
@@ -56,6 +60,7 @@ async fn main() -> Result<()> {
                             eprintln!("❌ Blade resize error: {}", e);
                         } else {
                             println!("✅ Blade resize successful");
+                            app.request_redraw(); // Request redraw after successful resize
                         }
                     }
                     WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
@@ -97,6 +102,18 @@ async fn main() -> Result<()> {
                         eprintln!("🔍 Blade render error: {}", e);
                         // TODO: Implement Blade-specific error recovery
                         // Goal: Simpler than WGPU's complex error handling
+                    }
+                }
+            }
+            Event::MainEventsCleared => {
+                // With Wait mode, this should rarely trigger
+                // Only request a redraw occasionally for testing
+                static mut FRAME_COUNT: u32 = 0;
+                unsafe {
+                    FRAME_COUNT += 1;
+                    if FRAME_COUNT % 1000 == 0 { // Much less frequent with Wait mode
+                        println!("🎯 Occasional redraw request #{}", FRAME_COUNT / 1000);
+                        app.request_redraw();
                     }
                 }
             }
