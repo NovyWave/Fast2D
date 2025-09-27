@@ -1,6 +1,6 @@
-use std::borrow::Cow;
-use crate::backend::Color;
 use super::Object2d;
+use crate::backend::Color;
+use std::borrow::Cow;
 
 mod family;
 pub use family::Family;

@@ -1,8 +1,11 @@
 use crate::Object2d;
+use crate::backend::backend_blade::FONT_SYSTEM;
+use glyphon::{
+    Attrs, Buffer as GlyphonBuffer, Cache, ColorMode, Family as GlyphonFamily, Metrics, Resolution,
+    Shaping, SwashCache, TextAtlas, TextRenderer, Viewport,
+};
 use web_sys::HtmlCanvasElement;
 use wgpu::util::DeviceExt;
-use glyphon::{Shaping, Buffer as GlyphonBuffer, Attrs, Metrics, Family as GlyphonFamily, TextRenderer, TextAtlas, SwashCache, Cache, Viewport, Resolution, ColorMode};
-use crate::backend::backend_blade::FONT_SYSTEM;
 
 /// Rectangle vertex for Blade-style rendering
 #[repr(C)]
@@ -13,8 +16,9 @@ struct RectangleVertex {
 }
 
 impl RectangleVertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4];
-    
+    const ATTRIBS: [wgpu::VertexAttribute; 2] =
+        wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4];
+
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<RectangleVertex>() as wgpu::BufferAddress,
@@ -42,7 +46,7 @@ impl CircleVertex {
         2 => Float32,   // radius
         3 => Float32x4  // color
     ];
-    
+
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<CircleVertex>() as wgpu::BufferAddress,
@@ -61,8 +65,9 @@ struct LineVertex {
 }
 
 impl LineVertex {
-    const ATTRIBS: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4];
-    
+    const ATTRIBS: [wgpu::VertexAttribute; 2] =
+        wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x4];
+
     fn desc() -> wgpu::VertexBufferLayout<'static> {
         wgpu::VertexBufferLayout {
             array_stride: std::mem::size_of::<LineVertex>() as wgpu::BufferAddress,
@@ -98,20 +103,21 @@ impl CanvasWrapper {
     /// Requires WebGPU support - will fail if not available.
     pub async fn new_with_canvas(canvas: HtmlCanvasElement) -> Self {
         web_sys::console::log_1(&"🔥 Initializing Blade-inspired WebGPU backend...".into());
-        
+
         let width = canvas.width().max(1);
         let height = canvas.height().max(1);
-        
+
         // Create WGPU instance with WebGPU backend only
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
             backends: wgpu::Backends::BROWSER_WEBGPU,
             ..Default::default()
         });
-        
+
         // Create surface from canvas
-        let surface = instance.create_surface(wgpu::SurfaceTarget::Canvas(canvas.clone()))
+        let surface = instance
+            .create_surface(wgpu::SurfaceTarget::Canvas(canvas.clone()))
             .expect("Failed to create WebGPU surface");
-        
+
         // Request adapter with WebGPU
         let adapter = instance
             .request_adapter(&wgpu::RequestAdapterOptions {
@@ -121,19 +127,17 @@ impl CanvasWrapper {
             })
             .await
             .expect("WebGPU adapter not found - WebGPU not supported");
-        
+
         web_sys::console::log_1(&"✅ WebGPU adapter acquired".into());
-        
+
         // Request device and queue
         let (device, queue) = adapter
-            .request_device(
-                &wgpu::DeviceDescriptor::default(),
-            )
+            .request_device(&wgpu::DeviceDescriptor::default())
             .await
             .expect("Failed to request WebGPU device");
-        
+
         web_sys::console::log_1(&"✅ WebGPU device and queue created".into());
-        
+
         // Configure surface
         let surface_caps = surface.get_capabilities(&adapter);
         let surface_format = surface_caps
@@ -142,7 +146,7 @@ impl CanvasWrapper {
             .find(|f| f.is_srgb())
             .copied()
             .unwrap_or(surface_caps.formats[0]);
-        
+
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: surface_format,
@@ -153,47 +157,60 @@ impl CanvasWrapper {
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
-        
+
         surface.configure(&device, &surface_config);
-        
+
         web_sys::console::log_1(&"✅ WebGPU surface configured".into());
-        
+
         // Create all rendering pipelines (Blade-style)
         let triangle_pipeline = Self::create_blade_triangle_pipeline(&device, surface_format).ok();
-        let rectangle_pipeline = Self::create_blade_rectangle_pipeline_with_dimensions(&device, surface_format, width as f32, height as f32).ok();
-        let circle_pipeline = Self::create_blade_circle_pipeline_with_dimensions(&device, surface_format, width as f32, height as f32).ok();
-        let line_pipeline = Self::create_blade_line_pipeline_with_dimensions(&device, surface_format, width as f32, height as f32).ok();
-        
+        let rectangle_pipeline = Self::create_blade_rectangle_pipeline_with_dimensions(
+            &device,
+            surface_format,
+            width as f32,
+            height as f32,
+        )
+        .ok();
+        let circle_pipeline = Self::create_blade_circle_pipeline_with_dimensions(
+            &device,
+            surface_format,
+            width as f32,
+            height as f32,
+        )
+        .ok();
+        let line_pipeline = Self::create_blade_line_pipeline_with_dimensions(
+            &device,
+            surface_format,
+            width as f32,
+            height as f32,
+        )
+        .ok();
+
         // Initialize text rendering components
         let swash_cache = SwashCache::new();
         let cache = Cache::new(&device);
         let mut viewport = Viewport::new(&device, &cache);
         viewport.update(&queue, Resolution { width, height });
-        
+
         let color_mode = ColorMode::Web;
-        let mut atlas = TextAtlas::with_color_mode(
-            &device,
-            &queue,
-            &cache,
-            surface_format,
-            color_mode,
-        );
-        
+        let mut atlas =
+            TextAtlas::with_color_mode(&device, &queue, &cache, surface_format, color_mode);
+
         let text_renderer = TextRenderer::new(
             &mut atlas,
             &device,
             wgpu::MultisampleState {
-                count: 1,  // No MSAA for Blade backend
+                count: 1, // No MSAA for Blade backend
                 mask: !0,
                 alpha_to_coverage_enabled: false,
             },
             None,
         );
-        
+
         web_sys::console::log_1(&"✅ Blade text renderer initialized".into());
-        
+
         web_sys::console::log_1(&"✅ Blade-style WebGPU pipelines ready!".into());
-        
+
         Self {
             objects: Vec::new(),
             canvas,
@@ -217,41 +234,64 @@ impl CanvasWrapper {
     /// Updates objects and renders using Blade-inspired WebGPU approach
     pub fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) {
         updater(&mut self.objects);
-        
-        web_sys::console::log_1(&format!("🎨 Blade WebGPU rendering {} objects", self.objects.len()).into());
-        
+
+        web_sys::console::log_1(
+            &format!("🎨 Blade WebGPU rendering {} objects", self.objects.len()).into(),
+        );
+
         self.render_blade_style();
     }
 
     /// Handles resizing using Blade-inspired approach
     pub fn resized(&mut self, width: u32, height: u32) {
-        if width == 0 || height == 0 || (width == self.current_size.0 && height == self.current_size.1) {
+        if width == 0
+            || height == 0
+            || (width == self.current_size.0 && height == self.current_size.1)
+        {
             return;
         }
-        
+
         web_sys::console::log_1(&format!("🔧 Blade WebGPU resize: {}x{}", width, height).into());
-        
+
         self.canvas.set_width(width);
         self.canvas.set_height(height);
         self.current_size = (width, height);
-        
+
         // Reconfigure surface (Blade-style)
         self.surface_config.width = width;
         self.surface_config.height = height;
         self.surface.configure(&self.device, &self.surface_config);
-        
+
         // Recreate pipelines with new dimensions for proper coordinate normalization
         let surface_format = self.surface_config.format;
-        self.rectangle_pipeline = Self::create_blade_rectangle_pipeline_with_dimensions(&self.device, surface_format, width as f32, height as f32).ok();
-        self.circle_pipeline = Self::create_blade_circle_pipeline_with_dimensions(&self.device, surface_format, width as f32, height as f32).ok();
-        self.line_pipeline = Self::create_blade_line_pipeline_with_dimensions(&self.device, surface_format, width as f32, height as f32).ok();
-        
+        self.rectangle_pipeline = Self::create_blade_rectangle_pipeline_with_dimensions(
+            &self.device,
+            surface_format,
+            width as f32,
+            height as f32,
+        )
+        .ok();
+        self.circle_pipeline = Self::create_blade_circle_pipeline_with_dimensions(
+            &self.device,
+            surface_format,
+            width as f32,
+            height as f32,
+        )
+        .ok();
+        self.line_pipeline = Self::create_blade_line_pipeline_with_dimensions(
+            &self.device,
+            surface_format,
+            width as f32,
+            height as f32,
+        )
+        .ok();
+
         web_sys::console::log_1(&"🔧 Pipelines recreated with new dimensions".into());
-        
+
         // Re-render
         self.render_blade_style();
     }
-    
+
     /// Render using Blade-inspired WebGPU patterns
     fn render_blade_style(&mut self) {
         let output = match self.surface.get_current_texture() {
@@ -261,14 +301,18 @@ impl CanvasWrapper {
                 return;
             }
         };
-        
-        let view = output.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        
+
+        let view = output
+            .texture
+            .create_view(&wgpu::TextureViewDescriptor::default());
+
         // Create command encoder (Blade-style naming)
-        let mut encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Blade Command Encoder"),
-        });
-        
+        let mut encoder = self
+            .device
+            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                label: Some("Blade Command Encoder"),
+            });
+
         // Render pass with Blade-style clear color
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -285,20 +329,23 @@ impl CanvasWrapper {
                 timestamp_writes: None,
                 occlusion_query_set: None,
             });
-            
+
             // Render all 2D objects using Blade-inspired WebGPU
             self.render_objects(&mut render_pass);
         }
-        
+
         // Submit commands (Blade-style)
         self.queue.submit(std::iter::once(encoder.finish()));
         output.present();
-        
+
         web_sys::console::log_1(&"✅ Blade WebGPU frame rendered".into());
     }
-    
+
     /// Create triangle pipeline using Blade-inspired shader patterns
-    fn create_blade_triangle_pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
+    fn create_blade_triangle_pipeline(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+    ) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
         // Blade-inspired shader (similar to blade_example triangle.wgsl)
         let shader_source = r#"
             // Blade-inspired triangle shader
@@ -318,19 +365,21 @@ impl CanvasWrapper {
                 return vec4<f32>(1.0, 0.4, 0.0, 1.0);
             }
         "#;
-        
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Blade Triangle Shader"),
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
-        
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Blade Triangle Pipeline"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Blade Triangle Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Blade Triangle Layout"),
+                    bind_group_layouts: &[],
+                    push_constant_ranges: &[],
+                }),
+            ),
             cache: None,
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -365,13 +414,19 @@ impl CanvasWrapper {
             },
             multiview: None,
         });
-        
+
         Ok(pipeline)
     }
-    
+
     /// Create rectangle rendering pipeline using Blade Graphics patterns
-    fn create_blade_rectangle_pipeline_with_dimensions(device: &wgpu::Device, format: wgpu::TextureFormat, canvas_width: f32, canvas_height: f32) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
-        let shader_source = format!(r#"
+    fn create_blade_rectangle_pipeline_with_dimensions(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        canvas_width: f32,
+        canvas_height: f32,
+    ) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
+        let shader_source = format!(
+            r#"
             // Blade-inspired rectangle shader
             struct VertexInput {{
                 @location(0) position: vec2<f32>,
@@ -398,20 +453,24 @@ impl CanvasWrapper {
             fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {{
                 return input.color;
             }}
-        "#, canvas_width, canvas_height);
-        
+        "#,
+            canvas_width, canvas_height
+        );
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Blade Rectangle Shader"),
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
-        
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Blade Rectangle Pipeline"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Blade Rectangle Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Blade Rectangle Layout"),
+                    bind_group_layouts: &[],
+                    push_constant_ranges: &[],
+                }),
+            ),
             cache: None,
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -446,13 +505,19 @@ impl CanvasWrapper {
             },
             multiview: None,
         });
-        
+
         Ok(pipeline)
     }
-    
+
     /// Create circle rendering pipeline using Blade Graphics patterns
-    fn create_blade_circle_pipeline_with_dimensions(device: &wgpu::Device, format: wgpu::TextureFormat, canvas_width: f32, canvas_height: f32) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
-        let shader_source = format!(r#"
+    fn create_blade_circle_pipeline_with_dimensions(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        canvas_width: f32,
+        canvas_height: f32,
+    ) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
+        let shader_source = format!(
+            r#"
             // Blade-inspired circle shader
             struct VertexInput {{
                 @location(0) position: vec2<f32>,
@@ -491,20 +556,24 @@ impl CanvasWrapper {
                 }}
                 return input.color;
             }}
-        "#, canvas_width, canvas_height);
-        
+        "#,
+            canvas_width, canvas_height
+        );
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Blade Circle Shader"),
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
-        
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Blade Circle Pipeline"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Blade Circle Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Blade Circle Layout"),
+                    bind_group_layouts: &[],
+                    push_constant_ranges: &[],
+                }),
+            ),
             cache: None,
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -539,13 +608,19 @@ impl CanvasWrapper {
             },
             multiview: None,
         });
-        
+
         Ok(pipeline)
     }
-    
+
     /// Create line rendering pipeline using Blade Graphics patterns
-    fn create_blade_line_pipeline_with_dimensions(device: &wgpu::Device, format: wgpu::TextureFormat, canvas_width: f32, canvas_height: f32) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
-        let shader_source = format!(r#"
+    fn create_blade_line_pipeline_with_dimensions(
+        device: &wgpu::Device,
+        format: wgpu::TextureFormat,
+        canvas_width: f32,
+        canvas_height: f32,
+    ) -> Result<wgpu::RenderPipeline, Box<dyn std::error::Error>> {
+        let shader_source = format!(
+            r#"
             // Blade-inspired line shader
             struct VertexInput {{
                 @location(0) position: vec2<f32>,
@@ -572,20 +647,24 @@ impl CanvasWrapper {
             fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {{
                 return input.color;
             }}
-        "#, canvas_width, canvas_height);
-        
+        "#,
+            canvas_width, canvas_height
+        );
+
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Blade Line Shader"),
             source: wgpu::ShaderSource::Wgsl(shader_source.into()),
         });
-        
+
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Blade Line Pipeline"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Blade Line Layout"),
-                bind_group_layouts: &[],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Blade Line Layout"),
+                    bind_group_layouts: &[],
+                    push_constant_ranges: &[],
+                }),
+            ),
             cache: None,
             vertex: wgpu::VertexState {
                 module: &shader,
@@ -620,10 +699,10 @@ impl CanvasWrapper {
             },
             multiview: None,
         });
-        
+
         Ok(pipeline)
     }
-    
+
     /// Render all 2D objects using Blade WebGPU pipelines
     fn render_objects(&self, render_pass: &mut wgpu::RenderPass) {
         let canvas_width = self.current_size.0 as f32;
@@ -645,9 +724,15 @@ impl CanvasWrapper {
             }
         }
     }
-    
+
     /// Render rectangle using Blade WebGPU
-    fn render_rectangle(&self, render_pass: &mut wgpu::RenderPass, rect: &crate::Rectangle, _canvas_width: f32, _canvas_height: f32) {
+    fn render_rectangle(
+        &self,
+        render_pass: &mut wgpu::RenderPass,
+        rect: &crate::Rectangle,
+        _canvas_width: f32,
+        _canvas_height: f32,
+    ) {
         if let Some(ref pipeline) = self.rectangle_pipeline {
             // Create rectangle vertices (2 triangles = 6 vertices)
             let color = [
@@ -656,38 +741,64 @@ impl CanvasWrapper {
                 rect.color.b as f32 / 255.0,
                 rect.color.a,
             ];
-            
+
             let x = rect.position.x;
             let y = rect.position.y;
             let w = rect.size.width;
             let h = rect.size.height;
-            
+
             let vertices = [
                 // Triangle 1
-                RectangleVertex { position: [x, y], color },         // Bottom-left
-                RectangleVertex { position: [x + w, y], color },     // Bottom-right
-                RectangleVertex { position: [x, y + h], color },     // Top-left
+                RectangleVertex {
+                    position: [x, y],
+                    color,
+                }, // Bottom-left
+                RectangleVertex {
+                    position: [x + w, y],
+                    color,
+                }, // Bottom-right
+                RectangleVertex {
+                    position: [x, y + h],
+                    color,
+                }, // Top-left
                 // Triangle 2
-                RectangleVertex { position: [x + w, y], color },     // Bottom-right
-                RectangleVertex { position: [x + w, y + h], color }, // Top-right
-                RectangleVertex { position: [x, y + h], color },     // Top-left
+                RectangleVertex {
+                    position: [x + w, y],
+                    color,
+                }, // Bottom-right
+                RectangleVertex {
+                    position: [x + w, y + h],
+                    color,
+                }, // Top-right
+                RectangleVertex {
+                    position: [x, y + h],
+                    color,
+                }, // Top-left
             ];
-            
+
             // Create vertex buffer
-            let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Rectangle Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-            
+            let vertex_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Rectangle Vertex Buffer"),
+                    contents: bytemuck::cast_slice(&vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
             render_pass.set_pipeline(pipeline);
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.draw(0..6, 0..1);
         }
     }
-    
+
     /// Render circle using Blade WebGPU
-    fn render_circle(&self, render_pass: &mut wgpu::RenderPass, circle: &crate::Circle, _canvas_width: f32, _canvas_height: f32) {
+    fn render_circle(
+        &self,
+        render_pass: &mut wgpu::RenderPass,
+        circle: &crate::Circle,
+        _canvas_width: f32,
+        _canvas_height: f32,
+    ) {
         if let Some(ref pipeline) = self.circle_pipeline {
             // Create circle as quad (2 triangles = 6 vertices)
             let color = [
@@ -696,42 +807,86 @@ impl CanvasWrapper {
                 circle.color.b as f32 / 255.0,
                 circle.color.a,
             ];
-            
+
             let center = [circle.center.x, circle.center.y];
             let radius = circle.radius;
-            
+
             // Create bounding box for the circle
             let x = center[0] - radius;
             let y = center[1] - radius;
             let w = radius * 2.0;
             let h = radius * 2.0;
-            
+
             let vertices = [
                 // Triangle 1
-                CircleVertex { position: [x, y], center, radius, color, _padding: 0.0 },
-                CircleVertex { position: [x + w, y], center, radius, color, _padding: 0.0 },
-                CircleVertex { position: [x, y + h], center, radius, color, _padding: 0.0 },
+                CircleVertex {
+                    position: [x, y],
+                    center,
+                    radius,
+                    color,
+                    _padding: 0.0,
+                },
+                CircleVertex {
+                    position: [x + w, y],
+                    center,
+                    radius,
+                    color,
+                    _padding: 0.0,
+                },
+                CircleVertex {
+                    position: [x, y + h],
+                    center,
+                    radius,
+                    color,
+                    _padding: 0.0,
+                },
                 // Triangle 2
-                CircleVertex { position: [x + w, y], center, radius, color, _padding: 0.0 },
-                CircleVertex { position: [x + w, y + h], center, radius, color, _padding: 0.0 },
-                CircleVertex { position: [x, y + h], center, radius, color, _padding: 0.0 },
+                CircleVertex {
+                    position: [x + w, y],
+                    center,
+                    radius,
+                    color,
+                    _padding: 0.0,
+                },
+                CircleVertex {
+                    position: [x + w, y + h],
+                    center,
+                    radius,
+                    color,
+                    _padding: 0.0,
+                },
+                CircleVertex {
+                    position: [x, y + h],
+                    center,
+                    radius,
+                    color,
+                    _padding: 0.0,
+                },
             ];
-            
+
             // Create vertex buffer
-            let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("Circle Vertex Buffer"),
-                contents: bytemuck::cast_slice(&vertices),
-                usage: wgpu::BufferUsages::VERTEX,
-            });
-            
+            let vertex_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("Circle Vertex Buffer"),
+                    contents: bytemuck::cast_slice(&vertices),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
             render_pass.set_pipeline(pipeline);
             render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
             render_pass.draw(0..6, 0..1);
         }
     }
-    
+
     /// Render line using Blade WebGPU
-    fn render_line(&self, render_pass: &mut wgpu::RenderPass, line: &crate::Line, _canvas_width: f32, _canvas_height: f32) {
+    fn render_line(
+        &self,
+        render_pass: &mut wgpu::RenderPass,
+        line: &crate::Line,
+        _canvas_width: f32,
+        _canvas_height: f32,
+    ) {
         if let Some(ref pipeline) = self.line_pipeline {
             let color = [
                 line.color.r as f32 / 255.0,
@@ -739,7 +894,7 @@ impl CanvasWrapper {
                 line.color.b as f32 / 255.0,
                 line.color.a,
             ];
-            
+
             // Convert line points to vertices
             let mut vertices = Vec::new();
             for point in &line.points {
@@ -748,35 +903,43 @@ impl CanvasWrapper {
                     color,
                 });
             }
-            
+
             if vertices.len() >= 2 {
                 // Create vertex buffer
-                let vertex_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Line Vertex Buffer"),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
-                
+                let vertex_buffer =
+                    self.device
+                        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("Line Vertex Buffer"),
+                            contents: bytemuck::cast_slice(&vertices),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        });
+
                 render_pass.set_pipeline(pipeline);
                 render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
                 render_pass.draw(0..vertices.len() as u32, 0..1);
             }
         }
     }
-    
+
     /// Render text using Blade WebGPU with glyphon
-    fn render_text(&self, _render_pass: &mut wgpu::RenderPass, text: &crate::Text, _canvas_width: f32, _canvas_height: f32) {
+    fn render_text(
+        &self,
+        _render_pass: &mut wgpu::RenderPass,
+        text: &crate::Text,
+        _canvas_width: f32,
+        _canvas_height: f32,
+    ) {
         // Check if we have all required text rendering components - simplified for now
         if self.text_renderer.is_none() {
             web_sys::console::log_1(&"⚠️ Text rendering components not available".into());
             return;
         }
-        
+
         let Some(font_system_mutex) = FONT_SYSTEM.get() else {
             web_sys::console::log_1(&"⚠️ Font system not initialized".into());
             return;
         };
-        
+
         let mut font_system = match font_system_mutex.lock() {
             Ok(fs) => fs,
             Err(_) => {
@@ -784,10 +947,13 @@ impl CanvasWrapper {
                 return;
             }
         };
-        
+
         // Set up text metrics and buffer
         let line_height_pixels = text.font_size * text.line_height_multiplier;
-        let mut buffer = GlyphonBuffer::new(&mut font_system, Metrics::new(text.font_size, line_height_pixels));
+        let mut buffer = GlyphonBuffer::new(
+            &mut font_system,
+            Metrics::new(text.font_size, line_height_pixels),
+        );
         buffer.set_size(&mut font_system, Some(text.width), Some(text.height));
 
         // Convert font family to glyphon format
@@ -802,10 +968,10 @@ impl CanvasWrapper {
 
         // Set up text attributes (color, weight, style)
         let glyphon_color = glyphon::Color::rgba(
-            text.color.r, 
-            text.color.g, 
-            text.color.b, 
-            (text.color.a * 255.0) as u8
+            text.color.r,
+            text.color.g,
+            text.color.b,
+            (text.color.a * 255.0) as u8,
         );
         let attrs = Attrs::new()
             .family(glyphon_family)
@@ -824,12 +990,22 @@ impl CanvasWrapper {
                     Black => glyphon::fontdb::Weight::BLACK,
                 }
             })
-            .style(if text.italic { glyphon::fontdb::Style::Italic } else { glyphon::fontdb::Style::Normal });
-        
+            .style(if text.italic {
+                glyphon::fontdb::Style::Italic
+            } else {
+                glyphon::fontdb::Style::Normal
+            });
+
         buffer.set_text(&mut font_system, &text.text, &attrs, Shaping::Advanced);
 
         // For now, just log that text would be rendered
         // TODO: Implement proper text rendering with mutable access to components
-        web_sys::console::log_1(&format!("🔤 Would render text: '{}' at ({}, {})", text.text, text.left, text.top).into());
+        web_sys::console::log_1(
+            &format!(
+                "🔤 Would render text: '{}' at ({}, {})",
+                text.text, text.left, text.top
+            )
+            .into(),
+        );
     }
 }

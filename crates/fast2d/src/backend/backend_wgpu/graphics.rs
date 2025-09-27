@@ -3,14 +3,17 @@
 //! This module manages all GPU resources, pipelines, and rendering state needed to draw 2D graphics efficiently.
 //! It is designed to be beginner-friendly and well-documented for those new to graphics programming.
 
-use wgpu::{Device, Queue, Surface, SurfaceConfiguration, SurfaceTarget, Texture, BindGroup, Buffer as WgpuBuffer};
 use super::MSAA_SAMPLE_COUNT;
-use glyphon::Viewport;
 use bytemuck;
+use glyphon::Viewport;
+use glyphon::{Cache, ColorMode, Resolution, SwashCache, TextAtlas, TextRenderer};
 use web_sys::HtmlCanvasElement;
-use glyphon::{Cache, SwashCache, TextAtlas, TextRenderer, Resolution, ColorMode};
-use wgpu::util::DeviceExt;
 use web_sys::wasm_bindgen::UnwrapThrowExt;
+use wgpu::util::DeviceExt;
+use wgpu::{
+    BindGroup, Buffer as WgpuBuffer, Device, Queue, Surface, SurfaceConfiguration, SurfaceTarget,
+    Texture,
+};
 
 /// Uniforms for the canvas, passed to shaders.
 ///
@@ -76,14 +79,36 @@ pub fn resize_graphics(graphics: &mut Graphics, width: u32, height: u32) {
     graphics.surface_config.width = new_width;
     graphics.surface_config.height = new_height;
     // Reconfigure the surface (resize the swapchain)
-    graphics.surface.configure(&graphics.device, &graphics.surface_config);
+    graphics
+        .surface
+        .configure(&graphics.device, &graphics.surface_config);
     // Recreate the MSAA texture for the new size
-    graphics.msaa_texture = create_msaa_texture(&graphics.device, new_width, new_height, graphics.surface_config.format);
+    graphics.msaa_texture = create_msaa_texture(
+        &graphics.device,
+        new_width,
+        new_height,
+        graphics.surface_config.format,
+    );
     // Update the text viewport for the new size
-    graphics.viewport.update(&graphics.queue, glyphon::Resolution { width: new_width, height: new_height });
+    graphics.viewport.update(
+        &graphics.queue,
+        glyphon::Resolution {
+            width: new_width,
+            height: new_height,
+        },
+    );
     // Update the uniform buffer with the new size
-    let uniforms = CanvasUniforms { width: new_width as f32, height: new_height as f32, _padding1: 0.0, _padding2: 0.0 };
-    graphics.queue.write_buffer(&graphics.uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+    let uniforms = CanvasUniforms {
+        width: new_width as f32,
+        height: new_height as f32,
+        _padding1: 0.0,
+        _padding2: 0.0,
+    };
+    graphics.queue.write_buffer(
+        &graphics.uniform_buffer,
+        0,
+        bytemuck::cast_slice(&[uniforms]),
+    );
 }
 
 /// Create a new MSAA (multisample anti-aliasing) texture for smoother edges.
@@ -96,10 +121,19 @@ pub fn resize_graphics(graphics: &mut Graphics, width: u32, height: u32) {
 ///
 /// # Returns
 /// A new MSAA texture.
-fn create_msaa_texture(device: &Device, width: u32, height: u32, format: wgpu::TextureFormat) -> Texture {
+fn create_msaa_texture(
+    device: &Device,
+    width: u32,
+    height: u32,
+    format: wgpu::TextureFormat,
+) -> Texture {
     device.create_texture(&wgpu::TextureDescriptor {
         label: Some("MSAA Texture"),
-        size: wgpu::Extent3d { width: width.max(1), height: height.max(1), depth_or_array_layers: 1 },
+        size: wgpu::Extent3d {
+            width: width.max(1),
+            height: height.max(1),
+            depth_or_array_layers: 1,
+        },
         mip_level_count: 1,
         sample_count: MSAA_SAMPLE_COUNT,
         dimension: wgpu::TextureDimension::D2,
@@ -140,19 +174,17 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
 
     // Request a logical device and command queue from the adapter
     let (device, queue) = adapter
-        .request_device(
-            &wgpu::DeviceDescriptor {
-                label: Some("WGPU Device"),
-                memory_hints: wgpu::MemoryHints::default(),
-                required_features: wgpu::Features::empty(),
-                #[cfg(feature = "webgpu")]
-                required_limits: wgpu::Limits::default().using_resolution(adapter.limits()),
-                #[cfg(feature = "webgl")]
-                required_limits: wgpu::Limits::downlevel_webgl2_defaults()
-                    .using_resolution(adapter.limits()),
-                trace: wgpu::Trace::Off,
-            },
-        )
+        .request_device(&wgpu::DeviceDescriptor {
+            label: Some("WGPU Device"),
+            memory_hints: wgpu::MemoryHints::default(),
+            required_features: wgpu::Features::empty(),
+            #[cfg(feature = "webgpu")]
+            required_limits: wgpu::Limits::default().using_resolution(adapter.limits()),
+            #[cfg(feature = "webgl")]
+            required_limits: wgpu::Limits::downlevel_webgl2_defaults()
+                .using_resolution(adapter.limits()),
+            trace: wgpu::Trace::Off,
+        })
         .await
         .unwrap_throw();
 
@@ -162,7 +194,8 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
         wgpu::TextureFormat::Rgba8Unorm,
         wgpu::TextureFormat::Bgra8Unorm,
     ];
-    let surface_format = preferred_linear_formats.iter()
+    let surface_format = preferred_linear_formats
+        .iter()
         .copied()
         .find(|format| surface_caps.formats.contains(format))
         .unwrap_or(surface_caps.formats[0]);
@@ -230,13 +263,7 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
 
     let color_mode = ColorMode::Web;
 
-    let mut atlas = TextAtlas::with_color_mode(
-        &device,
-        &queue,
-        &cache,
-        target_format,
-        color_mode,
-    );
+    let mut atlas = TextAtlas::with_color_mode(&device, &queue, &cache, target_format, color_mode);
 
     let text_renderer = TextRenderer::new(
         &mut atlas,

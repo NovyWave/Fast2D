@@ -12,7 +12,8 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
             crate::Object2d::Rectangle(rect) => {
                 // Border logic
                 let border_width = rect.border_width.unwrap_or(0.0);
-                let has_border = border_width > 0.0 && rect.border_color.map_or(false, |c| c.a > 0.0);
+                let has_border =
+                    border_width > 0.0 && rect.border_color.map_or(false, |c| c.a > 0.0);
                 // If border exists, fill area is reduced by border width
                 let fill_offset = if has_border { border_width } else { 0.0 };
                 let fill_x = rect.position.x + fill_offset;
@@ -52,11 +53,21 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         // Adjust corner radii for border path
                         let border_radii = crate::backend::RoundedCorners {
                             top_left: (rect.rounded_corners.top_left - border_width / 2.0).max(0.0),
-                            top_right: (rect.rounded_corners.top_right - border_width / 2.0).max(0.0),
-                            bottom_left: (rect.rounded_corners.bottom_left - border_width / 2.0).max(0.0),
-                            bottom_right: (rect.rounded_corners.bottom_right - border_width / 2.0).max(0.0),
+                            top_right: (rect.rounded_corners.top_right - border_width / 2.0)
+                                .max(0.0),
+                            bottom_left: (rect.rounded_corners.bottom_left - border_width / 2.0)
+                                .max(0.0),
+                            bottom_right: (rect.rounded_corners.bottom_right - border_width / 2.0)
+                                .max(0.0),
                         };
-                        draw_rounded_rect_path(ctx, border_x, border_y, border_w, border_h, &border_radii);
+                        draw_rounded_rect_path(
+                            ctx,
+                            border_x,
+                            border_y,
+                            border_w,
+                            border_h,
+                            &border_radii,
+                        );
                         ctx.stroke();
                     }
                 } else {
@@ -83,9 +94,14 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
             crate::Object2d::Circle(circle) => {
                 // Border logic for circles
                 let border_width = circle.border_width.unwrap_or(0.0);
-                let has_border = border_width > 0.0 && circle.border_color.map_or(false, |c| c.a > 0.0);
+                let has_border =
+                    border_width > 0.0 && circle.border_color.map_or(false, |c| c.a > 0.0);
                 // If border exists, fill radius is reduced
-                let fill_radius = if has_border { circle.radius - border_width } else { circle.radius };
+                let fill_radius = if has_border {
+                    circle.radius - border_width
+                } else {
+                    circle.radius
+                };
                 // Draw filled circle
                 if circle.color.a > 0.0 && fill_radius > 0.0 {
                     ctx.begin_path();
@@ -95,7 +111,8 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         fill_radius as f64,
                         0.0,
                         std::f64::consts::PI * 2.0,
-                    ).unwrap_throw();
+                    )
+                    .unwrap_throw();
                     let fill_color = circle.color.to_canvas_rgba();
                     ctx.set_fill_style_str(&fill_color);
                     ctx.fill();
@@ -109,7 +126,8 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         (fill_radius + border_width / 2.0) as f64,
                         0.0,
                         std::f64::consts::PI * 2.0,
-                    ).unwrap_throw();
+                    )
+                    .unwrap_throw();
                     let stroke_color = circle.border_color.unwrap_throw().to_canvas_rgba();
                     ctx.set_stroke_style_str(&stroke_color);
                     ctx.set_line_width(border_width as f64);
@@ -138,7 +156,13 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                     // Compose CSS font string
                     let font_style = if text.italic { "italic" } else { "normal" };
                     let font_weight = font_weight_to_css(&text.weight);
-                    let font_str = format!("{font_style} {font_weight} {font_size}px {family}", font_style=font_style, font_weight=font_weight, font_size=text.font_size, family=text.family);
+                    let font_str = format!(
+                        "{font_style} {font_weight} {font_size}px {family}",
+                        font_style = font_style,
+                        font_weight = font_weight,
+                        font_size = text.font_size,
+                        family = text.family
+                    );
                     ctx.set_font(&font_str);
                     let max_width = text.width;
                     let line_height = text.font_size * text.line_height_multiplier;
@@ -172,7 +196,8 @@ pub fn draw(ctx: &web_sys::CanvasRenderingContext2d, objects: &[crate::Object2d]
                         // Some browsers have a gap between font box and actual ascent
                         let gap = font_box_ascent - ascent;
                         let line_gap = if gap > 0.0 && gap < 1.0 { gap } else { 0.0 };
-                        ctx.fill_text(&line, text.left as f64, y as f64 + ascent + line_gap).unwrap_throw();
+                        ctx.fill_text(&line, text.left as f64, y as f64 + ascent + line_gap)
+                            .unwrap_throw();
                         y += line_height;
                         if y > text.top + text.height {
                             break;
@@ -203,19 +228,41 @@ fn draw_rounded_rect_path(
     ctx.move_to((x + tl) as f64, y as f64);
     ctx.line_to((x + w - tr) as f64, y as f64);
     if tr > 0.0 {
-        ctx.arc_to((x + w) as f64, y as f64, (x + w) as f64, (y + tr) as f64, tr as f64).unwrap_throw();
+        ctx.arc_to(
+            (x + w) as f64,
+            y as f64,
+            (x + w) as f64,
+            (y + tr) as f64,
+            tr as f64,
+        )
+        .unwrap_throw();
     }
     ctx.line_to((x + w) as f64, (y + h - br) as f64);
     if br > 0.0 {
-        ctx.arc_to((x + w) as f64, (y + h) as f64, (x + w - br) as f64, (y + h) as f64, br as f64).unwrap_throw();
+        ctx.arc_to(
+            (x + w) as f64,
+            (y + h) as f64,
+            (x + w - br) as f64,
+            (y + h) as f64,
+            br as f64,
+        )
+        .unwrap_throw();
     }
     ctx.line_to((x + bl) as f64, (y + h) as f64);
     if bl > 0.0 {
-        ctx.arc_to(x as f64, (y + h) as f64, x as f64, (y + h - bl) as f64, bl as f64).unwrap_throw();
+        ctx.arc_to(
+            x as f64,
+            (y + h) as f64,
+            x as f64,
+            (y + h - bl) as f64,
+            bl as f64,
+        )
+        .unwrap_throw();
     }
     ctx.line_to(x as f64, (y + tl) as f64);
     if tl > 0.0 {
-        ctx.arc_to(x as f64, y as f64, (x + tl) as f64, y as f64, tl as f64).unwrap_throw();
+        ctx.arc_to(x as f64, y as f64, (x + tl) as f64, y as f64, tl as f64)
+            .unwrap_throw();
     }
     ctx.close_path();
 }

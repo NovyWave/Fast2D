@@ -1,5 +1,5 @@
-use crate::backend::{Point, Color};
 use super::Object2d;
+use crate::backend::{Color, Point};
 
 /// A circle shape with optional border.
 #[derive(Clone, Debug)]

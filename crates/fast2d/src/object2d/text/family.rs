@@ -33,7 +33,6 @@ impl Family {
     pub fn name<S: Into<Cow<'static, str>>>(s: S) -> Self {
         Family::Name(s.into())
     }
-
 }
 
 /// Formats the font family as a string for display purposes.

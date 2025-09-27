@@ -11,9 +11,9 @@ mod draw;
 pub use draw::draw;
 
 mod graphics;
-pub use graphics::{Graphics, resize_graphics, create_graphics};
+pub use graphics::{Graphics, create_graphics, resize_graphics};
 
-use std::sync::{OnceLock, Mutex};
+use std::sync::{Mutex, OnceLock};
 
 pub static FONT_SYSTEM: OnceLock<Mutex<glyphon::FontSystem>> = OnceLock::new();
 pub const MSAA_SAMPLE_COUNT: u32 = 4;

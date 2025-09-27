@@ -1,6 +1,6 @@
-use std::sync::Mutex;
-use glyphon::FontSystem;
 use crate::backend::{FONT_SYSTEM, RegisterFontsError};
+use glyphon::FontSystem;
+use std::sync::Mutex;
 use web_sys::wasm_bindgen::UnwrapThrowExt;
 
 /// Registers fonts for the WGPU backend.

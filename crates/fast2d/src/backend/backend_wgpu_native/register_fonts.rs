@@ -1,6 +1,6 @@
-use std::sync::Mutex;
-use glyphon::FontSystem;
 use crate::backend::{FONT_SYSTEM, RegisterFontsError};
+use glyphon::FontSystem;
+use std::sync::Mutex;
 
 /// Registers fonts for the native WGPU backend.
 ///
@@ -20,7 +20,9 @@ pub fn register_fonts(fonts: Vec<Vec<u8>>) -> Result<(), RegisterFontsError> {
 
     // If already initialized, just add new fonts
     if let Some(font_system_mutex) = FONT_SYSTEM.get() {
-        let mut font_system = font_system_mutex.lock().expect("Failed to lock font system");
+        let mut font_system = font_system_mutex
+            .lock()
+            .expect("Failed to lock font system");
         let db = font_system.db_mut();
         for font_data in fonts {
             db.load_font_data(font_data);
@@ -40,6 +42,8 @@ pub fn register_fonts(fonts: Vec<Vec<u8>>) -> Result<(), RegisterFontsError> {
     if db.faces().next().is_none() {
         return Err(RegisterFontsError::NoValidFontLoaded);
     }
-    FONT_SYSTEM.set(Mutex::new(font_system)).expect("Failed to set font system");
+    FONT_SYSTEM
+        .set(Mutex::new(font_system))
+        .expect("Failed to set font system");
     Ok(())
 }

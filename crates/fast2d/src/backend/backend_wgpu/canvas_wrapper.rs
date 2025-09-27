@@ -1,6 +1,6 @@
+use super::Graphics;
 use crate::Object2d;
 use web_sys::HtmlCanvasElement;
-use super::Graphics;
 
 /// A wrapper around a GPU-accelerated canvas (WebGPU or WebGL, depending on enabled features),
 /// managing a list of 2D objects and rendering them.

@@ -1,5 +1,5 @@
-use crate::backend::{Point, Size, Color, RoundedCorners};
 use super::Object2d;
+use crate::backend::{Color, Point, RoundedCorners, Size};
 
 /// A rectangle shape with optional border and rounded corners.
 #[derive(Debug, Clone, Copy)]
@@ -56,7 +56,13 @@ impl Rectangle {
     }
 
     /// Sets the radii for the rectangle's rounded corners.
-    pub fn rounded_corners(mut self, top_left: f32, top_right: f32, bottom_left: f32, bottom_right: f32) -> Self {
+    pub fn rounded_corners(
+        mut self,
+        top_left: f32,
+        top_right: f32,
+        bottom_left: f32,
+        bottom_right: f32,
+    ) -> Self {
         self.rounded_corners = RoundedCorners {
             top_left: top_left.max(0.0),
             top_right: top_right.max(0.0),

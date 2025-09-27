@@ -1,18 +1,20 @@
 use super::*;
-use crate::{Rectangle, Circle};
-use lyon::math::{point, Box2D};
-use lyon::path::{Path, Winding};
-use lyon::path::builder::BorderRadii as LyonBorderRadii;
-use lyon::tessellation::{
-    FillTessellator, FillOptions, VertexBuffers, FillVertex, BuffersBuilder,
-    StrokeTessellator, StrokeOptions, StrokeVertex, LineCap, LineJoin,
-};
-use wgpu::TextureViewDescriptor;
-use wgpu::util::DeviceExt;
-use glyphon::{Shaping, Buffer as GlyphonBuffer, TextArea, Attrs, TextBounds, Metrics, Family as GlyphonFamily};
+use crate::{Circle, Rectangle};
 use bytemuck;
+use glyphon::{
+    Attrs, Buffer as GlyphonBuffer, Family as GlyphonFamily, Metrics, Shaping, TextArea, TextBounds,
+};
+use lyon::math::{Box2D, point};
+use lyon::path::builder::BorderRadii as LyonBorderRadii;
+use lyon::path::{Path, Winding};
+use lyon::tessellation::{
+    BuffersBuilder, FillOptions, FillTessellator, FillVertex, LineCap, LineJoin, StrokeOptions,
+    StrokeTessellator, StrokeVertex, VertexBuffers,
+};
 use web_sys::console;
 use web_sys::wasm_bindgen::{JsValue, UnwrapThrowExt};
+use wgpu::TextureViewDescriptor;
+use wgpu::util::DeviceExt;
 
 // The main draw function for rendering all 2D objects using wgpu
 pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
@@ -21,7 +23,10 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         Ok(texture) => texture,
         Err(e) => {
             // If we can't get the texture, log the error and try to recover if possible
-            console::error_1(&JsValue::from_str(&format!("Error getting current texture: {:?}", e)));
+            console::error_1(&JsValue::from_str(&format!(
+                "Error getting current texture: {:?}",
+                e
+            )));
             if e == wgpu::SurfaceError::Lost {
                 // If the surface is lost, reconfigure it
                 gfx.surface.configure(&gfx.device, &gfx.surface_config);
@@ -33,11 +38,16 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     };
 
     // Create views for the main output texture and the MSAA (anti-aliasing) texture
-    let view = output.texture.create_view(&TextureViewDescriptor::default());
-    let msaa_view = gfx.msaa_texture.create_view(&TextureViewDescriptor::default());
+    let view = output
+        .texture
+        .create_view(&TextureViewDescriptor::default());
+    let msaa_view = gfx
+        .msaa_texture
+        .create_view(&TextureViewDescriptor::default());
 
     // Lock the font system for text rendering
-    let mut font_system = FONT_SYSTEM.get()
+    let mut font_system = FONT_SYSTEM
+        .get()
         .expect_throw("FontSystem not initialized")
         .lock()
         .expect_throw("Failed to lock FontSystem Mutex");
@@ -52,8 +62,15 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             let text_width_f32 = text.width;
             let text_height_f32 = text.height;
             let line_height_pixels = text.font_size * text.line_height_multiplier;
-            let mut buffer = GlyphonBuffer::new(&mut font_system, Metrics::new(text.font_size, line_height_pixels));
-            buffer.set_size(&mut font_system, Some(text_width_f32), Some(text_height_f32));
+            let mut buffer = GlyphonBuffer::new(
+                &mut font_system,
+                Metrics::new(text.font_size, line_height_pixels),
+            );
+            buffer.set_size(
+                &mut font_system,
+                Some(text_width_f32),
+                Some(text_height_f32),
+            );
 
             // Convert font family to glyphon format
             let glyphon_family = match &text.family {
@@ -81,7 +98,10 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             };
             let font_exists = font_system.db().query(&font_query).is_some();
             if !font_exists {
-                let warning_message = format!("Warning: Font family '{:?}' not found. Falling back to default.", text.family);
+                let warning_message = format!(
+                    "Warning: Font family '{:?}' not found. Falling back to default.",
+                    text.family
+                );
                 web_sys::console::warn_1(&JsValue::from_str(&warning_message));
             }
 
@@ -104,7 +124,11 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                         Black => glyphon::fontdb::Weight::BLACK,
                     }
                 })
-                .style(if text.italic { glyphon::fontdb::Style::Italic } else { glyphon::fontdb::Style::Normal });
+                .style(if text.italic {
+                    glyphon::fontdb::Style::Italic
+                } else {
+                    glyphon::fontdb::Style::Normal
+                });
             buffer.set_text(&mut font_system, &text.text, &attrs, Shaping::Advanced);
             glyph_buffers.push(buffer);
         }
@@ -139,11 +163,19 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
 
     // Prepare the text renderer with all text areas
     match gfx.text_renderer.prepare(
-        &gfx.device, &gfx.queue, &mut font_system, &mut gfx.atlas, &gfx.viewport,
-        text_areas.into_iter(), &mut gfx.swash_cache,
+        &gfx.device,
+        &gfx.queue,
+        &mut font_system,
+        &mut gfx.atlas,
+        &gfx.viewport,
+        text_areas.into_iter(),
+        &mut gfx.swash_cache,
     ) {
         Ok(_) => {}
-        Err(e) => console::error_1(&JsValue::from_str(&format!("Error preparing text renderer: {:?}", e))),
+        Err(e) => console::error_1(&JsValue::from_str(&format!(
+            "Error preparing text renderer: {:?}",
+            e
+        ))),
     }
 
     // Create vertex and tessellator buffers for shape rendering
@@ -171,17 +203,29 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         // Calculate the area to fill (the inside of the rectangle)
         let fill_box = Box2D::new(
             point(rect.position.x + fill_offset, rect.position.y + fill_offset),
-            point(rect.position.x + rect.size.width - fill_offset, rect.position.y + rect.size.height - fill_offset),
+            point(
+                rect.position.x + rect.size.width - fill_offset,
+                rect.position.y + rect.size.height - fill_offset,
+            ),
         );
         let mut builder = Path::builder();
         // If any corner is rounded, add a rounded rectangle path
-        if rect.rounded_corners.top_left > 0.0 || rect.rounded_corners.top_right > 0.0 || rect.rounded_corners.bottom_left > 0.0 || rect.rounded_corners.bottom_right > 0.0 {
-            builder.add_rounded_rectangle(&fill_box, &LyonBorderRadii {
-                top_left: (rect.rounded_corners.top_left.max(0.0) - fill_offset).max(0.0),
-                top_right: (rect.rounded_corners.top_right.max(0.0) - fill_offset).max(0.0),
-                bottom_left: (rect.rounded_corners.bottom_left.max(0.0) - fill_offset).max(0.0),
-                bottom_right: (rect.rounded_corners.bottom_right.max(0.0) - fill_offset).max(0.0),
-            }, Winding::Positive);
+        if rect.rounded_corners.top_left > 0.0
+            || rect.rounded_corners.top_right > 0.0
+            || rect.rounded_corners.bottom_left > 0.0
+            || rect.rounded_corners.bottom_right > 0.0
+        {
+            builder.add_rounded_rectangle(
+                &fill_box,
+                &LyonBorderRadii {
+                    top_left: (rect.rounded_corners.top_left.max(0.0) - fill_offset).max(0.0),
+                    top_right: (rect.rounded_corners.top_right.max(0.0) - fill_offset).max(0.0),
+                    bottom_left: (rect.rounded_corners.bottom_left.max(0.0) - fill_offset).max(0.0),
+                    bottom_right: (rect.rounded_corners.bottom_right.max(0.0) - fill_offset)
+                        .max(0.0),
+                },
+                Winding::Positive,
+            );
         } else {
             // Otherwise, add a simple rectangle path
             builder.add_rectangle(&fill_box, Winding::Positive);
@@ -189,14 +233,16 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         let fill_path = builder.build();
         // Draw the filled part of the rectangle if it is visible
         if rect.color.a > 0.0 && fill_box.size().width > 0.0 && fill_box.size().height > 0.0 {
-            fill_tessellator.tessellate_path(
-                &fill_path,
-                &FillOptions::default(),
-                &mut BuffersBuilder::new(buffers, |vertex: FillVertex| ColoredVertex {
-                    position: [vertex.position().x, vertex.position().y],
-                    color: linear_color,
-                }),
-            ).unwrap_throw();
+            fill_tessellator
+                .tessellate_path(
+                    &fill_path,
+                    &FillOptions::default(),
+                    &mut BuffersBuilder::new(buffers, |vertex: FillVertex| ColoredVertex {
+                        position: [vertex.position().x, vertex.position().y],
+                        color: linear_color,
+                    }),
+                )
+                .unwrap_throw();
         }
         // Draw the border if needed
         if has_border && fill_box.size().width > 0.0 && fill_box.size().height > 0.0 {
@@ -204,18 +250,38 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             let linear_border_color = rect.border_color.unwrap_throw().to_linear();
             // Calculate the area for the border (centered on the rectangle's edge)
             let border_box = Box2D::new(
-                point(rect.position.x + border_width / 2.0, rect.position.y + border_width / 2.0),
-                point(rect.position.x + rect.size.width - border_width / 2.0, rect.position.y + rect.size.height - border_width / 2.0),
+                point(
+                    rect.position.x + border_width / 2.0,
+                    rect.position.y + border_width / 2.0,
+                ),
+                point(
+                    rect.position.x + rect.size.width - border_width / 2.0,
+                    rect.position.y + rect.size.height - border_width / 2.0,
+                ),
             );
             let mut border_builder = Path::builder();
             // Add a rounded rectangle path for the border if needed
-            if rect.rounded_corners.top_left > 0.0 || rect.rounded_corners.top_right > 0.0 || rect.rounded_corners.bottom_left > 0.0 || rect.rounded_corners.bottom_right > 0.0 {
-                border_builder.add_rounded_rectangle(&border_box, &LyonBorderRadii {
-                    top_left: (rect.rounded_corners.top_left.max(0.0) - border_width / 2.0).max(0.0),
-                    top_right: (rect.rounded_corners.top_right.max(0.0) - border_width / 2.0).max(0.0),
-                    bottom_left: (rect.rounded_corners.bottom_left.max(0.0) - border_width / 2.0).max(0.0),
-                    bottom_right: (rect.rounded_corners.bottom_right.max(0.0) - border_width / 2.0).max(0.0),
-                }, Winding::Positive);
+            if rect.rounded_corners.top_left > 0.0
+                || rect.rounded_corners.top_right > 0.0
+                || rect.rounded_corners.bottom_left > 0.0
+                || rect.rounded_corners.bottom_right > 0.0
+            {
+                border_builder.add_rounded_rectangle(
+                    &border_box,
+                    &LyonBorderRadii {
+                        top_left: (rect.rounded_corners.top_left.max(0.0) - border_width / 2.0)
+                            .max(0.0),
+                        top_right: (rect.rounded_corners.top_right.max(0.0) - border_width / 2.0)
+                            .max(0.0),
+                        bottom_left: (rect.rounded_corners.bottom_left.max(0.0)
+                            - border_width / 2.0)
+                            .max(0.0),
+                        bottom_right: (rect.rounded_corners.bottom_right.max(0.0)
+                            - border_width / 2.0)
+                            .max(0.0),
+                    },
+                    Winding::Positive,
+                );
             } else {
                 // Otherwise, add a simple rectangle path for the border
                 border_builder.add_rectangle(&border_box, Winding::Positive);
@@ -224,14 +290,16 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             // Set border options (width, etc.)
             let options = StrokeOptions::default().with_line_width(border_width);
             // Draw the border
-            stroke_tessellator.tessellate_path(
-                &border_path,
-                &options,
-                &mut BuffersBuilder::new(buffers, |vertex: StrokeVertex| ColoredVertex {
-                    position: [vertex.position().x, vertex.position().y],
-                    color: linear_border_color,
-                }),
-            ).unwrap_throw();
+            stroke_tessellator
+                .tessellate_path(
+                    &border_path,
+                    &options,
+                    &mut BuffersBuilder::new(buffers, |vertex: StrokeVertex| ColoredVertex {
+                        position: [vertex.position().x, vertex.position().y],
+                        color: linear_border_color,
+                    }),
+                )
+                .unwrap_throw();
         }
     }
 
@@ -251,21 +319,31 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         // Check if the circle has a visible border
         let has_border = border_width > 0.0 && circle.border_color.map_or(false, |c| c.a > 0.0);
         // If there is a border, shrink the fill radius so the border fits inside the circle
-        let fill_radius = if has_border { circle.radius - border_width } else { circle.radius };
+        let fill_radius = if has_border {
+            circle.radius - border_width
+        } else {
+            circle.radius
+        };
         let mut builder = Path::builder();
         // Add a circle path for the filled area
-        builder.add_circle(point(circle.center.x, circle.center.y), fill_radius, Winding::Positive);
+        builder.add_circle(
+            point(circle.center.x, circle.center.y),
+            fill_radius,
+            Winding::Positive,
+        );
         let fill_path = builder.build();
         // Draw the filled part of the circle if it is visible
         if circle.color.a > 0.0 && fill_radius > 0.0 {
-            fill_tessellator.tessellate_path(
-                &fill_path,
-                &FillOptions::default(),
-                &mut BuffersBuilder::new(buffers, |vertex: FillVertex| ColoredVertex {
-                    position: [vertex.position().x, vertex.position().y],
-                    color: linear_color,
-                }),
-            ).unwrap_throw();
+            fill_tessellator
+                .tessellate_path(
+                    &fill_path,
+                    &FillOptions::default(),
+                    &mut BuffersBuilder::new(buffers, |vertex: FillVertex| ColoredVertex {
+                        position: [vertex.position().x, vertex.position().y],
+                        color: linear_color,
+                    }),
+                )
+                .unwrap_throw();
         }
         // Draw the border if needed
         if has_border && fill_radius > 0.0 {
@@ -282,14 +360,16 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             // Set border options (width, etc.)
             let options = StrokeOptions::default().with_line_width(border_width);
             // Draw the border
-            stroke_tessellator.tessellate_path(
-                &border_path,
-                &options,
-                &mut BuffersBuilder::new(buffers, |vertex: StrokeVertex| ColoredVertex {
-                    position: [vertex.position().x, vertex.position().y],
-                    color: linear_border_color,
-                }),
-            ).unwrap_throw();
+            stroke_tessellator
+                .tessellate_path(
+                    &border_path,
+                    &options,
+                    &mut BuffersBuilder::new(buffers, |vertex: StrokeVertex| ColoredVertex {
+                        position: [vertex.position().x, vertex.position().y],
+                        color: linear_border_color,
+                    }),
+                )
+                .unwrap_throw();
         }
     }
 
@@ -298,11 +378,21 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         match obj {
             crate::Object2d::Rectangle(rect) => {
                 // Draw a rectangle object
-                draw_rectangle(rect, &mut buffers, &mut fill_tessellator, &mut stroke_tessellator);
+                draw_rectangle(
+                    rect,
+                    &mut buffers,
+                    &mut fill_tessellator,
+                    &mut stroke_tessellator,
+                );
             }
             crate::Object2d::Circle(circle) => {
                 // Draw a circle object
-                draw_circle(circle, &mut buffers, &mut fill_tessellator, &mut stroke_tessellator);
+                draw_circle(
+                    circle,
+                    &mut buffers,
+                    &mut fill_tessellator,
+                    &mut stroke_tessellator,
+                );
             }
             crate::Object2d::Line(line) => {
                 // Draw a line object
@@ -329,14 +419,18 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
                         .with_line_cap(LineCap::Round)
                         .with_line_join(LineJoin::Round);
                     // Draw the line
-                    stroke_tessellator.tessellate_path(
-                        &path,
-                        &options,
-                        &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| ColoredVertex {
-                            position: [vertex.position().x, vertex.position().y],
-                            color: linear_color,
-                        }),
-                    ).unwrap_throw();
+                    stroke_tessellator
+                        .tessellate_path(
+                            &path,
+                            &options,
+                            &mut BuffersBuilder::new(&mut buffers, |vertex: StrokeVertex| {
+                                ColoredVertex {
+                                    position: [vertex.position().x, vertex.position().y],
+                                    color: linear_color,
+                                }
+                            }),
+                        )
+                        .unwrap_throw();
                 }
             }
             crate::Object2d::Text(_) => {}
@@ -344,16 +438,28 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     }
 
     // Create GPU buffers for vertices and indices
-    let vertex_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Vertex Buffer"), contents: bytemuck::cast_slice(&buffers.vertices), usage: wgpu::BufferUsages::VERTEX,
-    });
-    let index_buffer = gfx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("Index Buffer"), contents: bytemuck::cast_slice(&buffers.indices), usage: wgpu::BufferUsages::INDEX,
-    });
+    let vertex_buffer = gfx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Vertex Buffer"),
+            contents: bytemuck::cast_slice(&buffers.vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+    let index_buffer = gfx
+        .device
+        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(&buffers.indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
     let num_indices = buffers.indices.len() as u32;
 
     // Create a command encoder for the GPU commands
-    let mut encoder = gfx.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("Render Encoder") });
+    let mut encoder = gfx
+        .device
+        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        });
     {
         // Begin a render pass (drawing session)
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -361,9 +467,19 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &msaa_view,
                 resolve_target: Some(&view),
-                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color { r: 0.0, g: 0.0, b: 0.0, a: 1.0 }), store: wgpu::StoreOp::Store },
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.0,
+                        g: 0.0,
+                        b: 0.0,
+                        a: 1.0,
+                    }),
+                    store: wgpu::StoreOp::Store,
+                },
             })],
-            depth_stencil_attachment: None, timestamp_writes: None, occlusion_query_set: None,
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
         });
 
         // Draw all shapes if there are any indices
@@ -376,9 +492,15 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         }
 
         // Draw all text
-        match gfx.text_renderer.render(&gfx.atlas, &gfx.viewport, &mut render_pass) {
+        match gfx
+            .text_renderer
+            .render(&gfx.atlas, &gfx.viewport, &mut render_pass)
+        {
             Ok(_) => {}
-            Err(e) => console::error_1(&JsValue::from_str(&format!("Error rendering text: {:?}", e))),
+            Err(e) => console::error_1(&JsValue::from_str(&format!(
+                "Error rendering text: {:?}",
+                e
+            ))),
         }
     }
     // Submit all drawing commands to the GPU

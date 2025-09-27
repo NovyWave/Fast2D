@@ -1,6 +1,6 @@
-use std::sync::Mutex;
+use crate::backend::{RegisterFontsError, backend_blade::FONT_SYSTEM};
 use glyphon::FontSystem;
-use crate::backend::{backend_blade::FONT_SYSTEM, RegisterFontsError};
+use std::sync::Mutex;
 use web_sys::wasm_bindgen::UnwrapThrowExt;
 
 /// Registers fonts for the Blade WebGPU backend.

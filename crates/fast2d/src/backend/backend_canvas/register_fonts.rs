@@ -1,6 +1,6 @@
-use web_sys::{window, FontFace, FontFaceDescriptors};
 use crate::backend::RegisterFontsError;
 use ttf_parser::{Face, name_id};
+use web_sys::{FontFace, FontFaceDescriptors, window};
 
 /// Registers fonts for the Canvas backend.
 ///
@@ -23,8 +23,7 @@ pub fn register_fonts(fonts: Vec<Vec<u8>>) -> Result<(), RegisterFontsError> {
     let mut any_loaded = false;
 
     for font_bytes in fonts {
-        let face = Face::parse(&font_bytes, 0)
-            .map_err(|_| RegisterFontsError::FontParseFailed)?;
+        let face = Face::parse(&font_bytes, 0).map_err(|_| RegisterFontsError::FontParseFailed)?;
 
         let mut family = None;
         let mut weight = None;
@@ -35,22 +34,24 @@ pub fn register_fonts(fonts: Vec<Vec<u8>>) -> Result<(), RegisterFontsError> {
             }
             if name.name_id == name_id::SUBFAMILY && style.is_none() {
                 let subfamily = name.to_string().unwrap_or_default().to_lowercase();
-                style = Some(if subfamily.contains("italic") { "italic" } else { "normal" });
-                weight = Some(
-                    if subfamily.contains("bold") {
-                        "bold"
-                    } else if subfamily.contains("light") {
-                        "300"
-                    } else if subfamily.contains("medium") {
-                        "500"
-                    } else if subfamily.contains("semibold") {
-                        "600"
-                    } else if subfamily.contains("black") {
-                        "900"
-                    } else {
-                        "400"
-                    }
-                );
+                style = Some(if subfamily.contains("italic") {
+                    "italic"
+                } else {
+                    "normal"
+                });
+                weight = Some(if subfamily.contains("bold") {
+                    "bold"
+                } else if subfamily.contains("light") {
+                    "300"
+                } else if subfamily.contains("medium") {
+                    "500"
+                } else if subfamily.contains("semibold") {
+                    "600"
+                } else if subfamily.contains("black") {
+                    "900"
+                } else {
+                    "400"
+                });
             }
         }
         let family = family.ok_or(RegisterFontsError::FontParseFailed)?;
@@ -62,9 +63,11 @@ pub fn register_fonts(fonts: Vec<Vec<u8>>) -> Result<(), RegisterFontsError> {
         let descriptors = FontFaceDescriptors::new();
         descriptors.set_style(style);
         descriptors.set_weight(weight);
-        let font_face = FontFace::new_with_array_buffer_and_descriptors(&family, &array_buffer, &descriptors)
-            .map_err(|error| RegisterFontsError::FontFaceError(format!("{:?}", error)))?;
-        font_face_set.add(&font_face)
+        let font_face =
+            FontFace::new_with_array_buffer_and_descriptors(&family, &array_buffer, &descriptors)
+                .map_err(|error| RegisterFontsError::FontFaceError(format!("{:?}", error)))?;
+        font_face_set
+            .add(&font_face)
             .map_err(|error| RegisterFontsError::AddFontError(format!("{:?}", error)))?;
         any_loaded = true;
     }

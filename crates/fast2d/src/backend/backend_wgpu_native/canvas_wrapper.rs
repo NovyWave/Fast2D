@@ -1,10 +1,10 @@
-use crate::Object2d;
 use super::Graphics;
+use crate::Object2d;
 use wgpu::{Adapter, Device, Queue, Surface};
 
 /// A wrapper around a GPU-accelerated native surface, managing a list of 2D objects and rendering them.
-/// 
-/// This is the native equivalent of the web CanvasWrapper, providing the same API but working with 
+///
+/// This is the native equivalent of the web CanvasWrapper, providing the same API but working with
 /// native WGPU surfaces instead of HTML canvas elements.
 pub struct CanvasWrapper {
     objects: Vec<Object2d>,
@@ -16,7 +16,7 @@ pub struct CanvasWrapper {
 impl CanvasWrapper {
     /// Creates a new `CanvasWrapper` with a native WGPU surface.
     ///
-    /// This is the native alternative to `new_with_canvas()`. It initializes the graphics context 
+    /// This is the native alternative to `new_with_canvas()`. It initializes the graphics context
     /// and prepares for rendering using native WGPU on the desktop.
     ///
     /// # Arguments
@@ -33,11 +33,13 @@ impl CanvasWrapper {
         surface: Surface<'static>,
         device: Device,
         queue: Queue,
-        adapter: Adapter, 
+        adapter: Adapter,
         width: u32,
         height: u32,
     ) -> Self {
-        let graphics = super::create_graphics_with_adapter(surface, device, queue, adapter, width, height).await;
+        let graphics =
+            super::create_graphics_with_adapter(surface, device, queue, adapter, width, height)
+                .await;
         Self {
             objects: Vec::new(),
             graphics,
@@ -70,7 +72,9 @@ impl CanvasWrapper {
         width: u32,
         height: u32,
     ) -> Self {
-        let graphics = super::create_graphics_with_adapter(surface, device, queue, adapter, width, height).await;
+        let graphics =
+            super::create_graphics_with_adapter(surface, device, queue, adapter, width, height)
+                .await;
         Self {
             objects: Vec::new(),
             graphics,
@@ -85,7 +89,10 @@ impl CanvasWrapper {
     ///
     /// # Arguments
     /// * `updater` - A closure that mutates the internal vector of `Object2d`.
-    pub fn update_objects(&mut self, updater: impl FnOnce(&mut Vec<Object2d>)) -> Result<(), wgpu::SurfaceError> {
+    pub fn update_objects(
+        &mut self,
+        updater: impl FnOnce(&mut Vec<Object2d>),
+    ) -> Result<(), wgpu::SurfaceError> {
         updater(&mut self.objects);
         super::draw(&mut self.graphics, &self.objects)
     }
@@ -128,14 +135,14 @@ impl CanvasWrapper {
     }
 
     /// Gets a reference to the underlying graphics context.
-    /// 
+    ///
     /// This can be useful for advanced use cases that need direct access to WGPU resources.
     pub fn graphics(&self) -> &Graphics {
         &self.graphics
     }
 
     /// Gets a mutable reference to the underlying graphics context.
-    /// 
+    ///
     /// This can be useful for advanced use cases that need direct access to WGPU resources.
     pub fn graphics_mut(&mut self) -> &mut Graphics {
         &mut self.graphics
@@ -147,7 +154,7 @@ impl CanvasWrapper {
     }
 
     /// Renders the current objects without updating them.
-    /// 
+    ///
     /// This method is useful for continuous rendering without modifying the object list.
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         super::draw(&mut self.graphics, &self.objects)

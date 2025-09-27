@@ -3,7 +3,7 @@
 //! This module provides types for representing 2D graphical objects such as text, rectangles, circles, and lines.
 
 mod text;
-pub use text::{Text, FontWeight, Family};
+pub use text::{Family, FontWeight, Text};
 
 mod rectangle;
 pub use rectangle::Rectangle;
@@ -11,7 +11,7 @@ pub use rectangle::Rectangle;
 mod circle;
 pub use circle::Circle;
 
-mod line; 
+mod line;
 pub use line::Line;
 
 /// Represents a 2D object that can be rendered.

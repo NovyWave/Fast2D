@@ -1,5 +1,5 @@
-use crate::backend::{Point, Color};
 use super::Object2d;
+use crate::backend::{Color, Point};
 
 /// A line shape defined by a sequence of points.
 #[derive(Debug, Clone)]
@@ -30,7 +30,11 @@ impl Line {
 
     /// Sets the points of the line from a slice of (x, y) tuples.
     pub fn points(mut self, points_tuples: &[(f32, f32)]) -> Self {
-        self.points = points_tuples.iter().copied().map(|(x, y)| Point { x, y }).collect();
+        self.points = points_tuples
+            .iter()
+            .copied()
+            .map(|(x, y)| Point { x, y })
+            .collect();
         self
     }
 

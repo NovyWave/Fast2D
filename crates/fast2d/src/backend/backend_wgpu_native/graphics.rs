@@ -3,12 +3,14 @@
 //! This module manages all GPU resources, pipelines, and rendering state needed to draw 2D graphics efficiently on native platforms.
 //! It provides the same functionality as the web backend but uses native WGPU surfaces instead of HTML Canvas elements.
 
-use wgpu::{Device, Queue, Surface, SurfaceConfiguration, Texture, BindGroup, Buffer as WgpuBuffer};
 use super::MSAA_SAMPLE_COUNT;
-use glyphon::Viewport;
 use bytemuck;
+use glyphon::Viewport;
 use glyphon::{Cache, SwashCache, TextAtlas, TextRenderer};
 use wgpu::util::DeviceExt;
+use wgpu::{
+    BindGroup, Buffer as WgpuBuffer, Device, Queue, Surface, SurfaceConfiguration, Texture,
+};
 
 /// Uniforms for the canvas, passed to shaders.
 ///
@@ -74,13 +76,15 @@ pub struct Graphics {
 /// # Returns
 /// A fully initialized Graphics struct ready for rendering.
 pub async fn create_graphics(
-    surface: Surface<'static>, 
+    surface: Surface<'static>,
     device: Device,
     queue: Queue,
-    width: u32, 
-    height: u32
+    width: u32,
+    height: u32,
 ) -> Graphics {
-    panic!("create_graphics without adapter is not supported. Use create_graphics_with_adapter instead.");
+    panic!(
+        "create_graphics without adapter is not supported. Use create_graphics_with_adapter instead."
+    );
 }
 
 /// Creates a new Graphics context with a native WGPU surface and adapter.
@@ -99,12 +103,12 @@ pub async fn create_graphics(
 /// # Returns
 /// A fully initialized Graphics struct ready for rendering.
 pub async fn create_graphics_with_adapter(
-    surface: Surface<'static>, 
+    surface: Surface<'static>,
     device: Device,
     queue: Queue,
     adapter: wgpu::Adapter,
-    width: u32, 
-    height: u32
+    width: u32,
+    height: u32,
 ) -> Graphics {
     // Get surface capabilities and choose a suitable format
     let surface_caps = surface.get_capabilities(&adapter);
@@ -116,20 +120,30 @@ pub async fn create_graphics_with_adapter(
         .unwrap_or(surface_caps.formats[0]);
 
     // Configure the surface with resize-optimized settings
-    let present_mode = if cfg!(windows) && surface_caps.present_modes.contains(&wgpu::PresentMode::Immediate) {
+    let present_mode = if cfg!(windows)
+        && surface_caps
+            .present_modes
+            .contains(&wgpu::PresentMode::Immediate)
+    {
         wgpu::PresentMode::Immediate // Better for resize on Windows
-    } else if surface_caps.present_modes.contains(&wgpu::PresentMode::Fifo) {
+    } else if surface_caps
+        .present_modes
+        .contains(&wgpu::PresentMode::Fifo)
+    {
         wgpu::PresentMode::Fifo // VSync - most compatible
     } else {
         surface_caps.present_modes[0]
     };
-    
-    let alpha_mode = if surface_caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::Opaque) {
+
+    let alpha_mode = if surface_caps
+        .alpha_modes
+        .contains(&wgpu::CompositeAlphaMode::Opaque)
+    {
         wgpu::CompositeAlphaMode::Opaque
     } else {
         surface_caps.alpha_modes[0]
     };
-    
+
     let surface_config = SurfaceConfiguration {
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         format: surface_format,
@@ -276,27 +290,32 @@ pub async fn create_graphics_with_adapter(
 pub fn resize_graphics(graphics: &mut Graphics, width: u32, height: u32) {
     // Skip invalid sizes
     if width == 0 || height == 0 {
-        println!("Warning: Skipping resize with zero dimensions: {}x{}", width, height);
+        println!(
+            "Warning: Skipping resize with zero dimensions: {}x{}",
+            width, height
+        );
         return;
     }
-    
+
     // Skip if size hasn't actually changed
     if graphics.surface_config.width == width && graphics.surface_config.height == height {
         return;
     }
-    
+
     println!("Configuring surface: {}x{}", width, height);
     graphics.surface_config.width = width;
     graphics.surface_config.height = height;
-    
+
     // Configure surface - this is the most likely place for resize issues
-    graphics.surface.configure(&graphics.device, &graphics.surface_config);
-    
+    graphics
+        .surface
+        .configure(&graphics.device, &graphics.surface_config);
+
     // Recreate MSAA texture with new size
     println!("Creating MSAA texture: {}x{}", width, height);
     graphics.msaa_texture = create_msaa_texture(&graphics.device, &graphics.surface_config);
     println!("MSAA texture created successfully");
-    
+
     // Update uniform buffer with new dimensions
     let uniforms = CanvasUniforms {
         width: width as f32,
@@ -309,7 +328,7 @@ pub fn resize_graphics(graphics: &mut Graphics, width: u32, height: u32) {
         0,
         bytemuck::cast_slice(&[uniforms]),
     );
-    
+
     println!("Surface resize completed: {}x{}", width, height);
 }
 

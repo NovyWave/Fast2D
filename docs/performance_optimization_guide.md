@@ -22,6 +22,28 @@ Fast2D currently exhibits significant performance degradation when using WebGL/W
 6. [Optimization Roadmap](#optimization-roadmap)
 7. [Testing & Verification](#testing--verification)
 
+## Verification Snapshot (Codex Review)
+
+- **Buffer Recreation Overhead** — Confirmed in `crates/fast2d/src/backend/backend_wgpu/draw.rs` where every render recreates vertex and index buffers via `device.create_buffer_init`. `frontend/src/visualizer/canvas/rendering.rs` drives this path on each redraw, so GPU backends never reuse buffers.
+- **CPU Tessellation Bottleneck** — `backend/backend_wgpu/draw.rs` re-runs Lyon tessellation for rectangles, lines, and circles on every frame, while `WaveformRenderer::build_static_objects` rebuilds the full geometry set, so GPU work is constantly preceded by heavy CPU tessellation.
+- **Present Mode Selection** — `backend/backend_wgpu/graphics.rs` still chooses `surface_caps.present_modes[0]` without preference logic, mirroring the issue noted in this guide.
+- **WebGL Limits & Extensions** — The WebGL path is compiled with `wgpu::Limits::downlevel_webgl2_defaults()` and the repository never calls `get_extension`, so none of the recommended extensions are enabled yet.
+- **Manual sRGB Conversion** — `backend/backend_wgpu/shaders.wgsl` always executes `linear_to_srgb`, adding the fragment shader cost the guide flagged.
+- **MSAA Sample Count** — `backend/backend_wgpu.rs` keeps `MSAA_SAMPLE_COUNT` at 4 even when targeting WebGL; there is no automatic downgrade when the adapter only offers software rendering.
+- **GPU Capability Detection Gap** — Neither Fast2D nor NovyWave checks the WebGL renderer/vendor strings, so Linux + NVIDIA falls back silently to SwiftShader/llvmpipe exactly as described.
+- **Render Signal Cascade** — `frontend/src/visualizer/canvas/waveform_canvas.rs` wires independent relays for init, redraw, resize, theme, and state updates, each calling `render_frame` immediately, so multiple back-to-back renders happen during a single logical update.
+- **Static Cache Volatility** — `StaticRenderKey` includes viewport start/end values, which change on any pan or zoom, so the “static” object cache rarely survives more than one frame.
+- **Text Layout Cost** — GPU backends rebuild `GlyphonBuffer` instances every frame in `backend/backend_wgpu/draw.rs`; NovyWave overlays (axis labels, cursor text) therefore incur extra CPU time compared to the Canvas backend.
+
+## Additional Findings
+
+1. **Present Mode & Power Preference** — Fast2D currently requests adapters with `wgpu::PowerPreference::None` and accepts the surface’s first present mode. For WebGL this often picks FIFO and a low-power adapter, which increases latency and may land on SwiftShader on Linux. Prefer `HighPerformance` and explicit present-mode ordering when possible.
+2. **No Backend Telemetry** — Neither project records which backend (Canvas/WebGL/WebGPU) is active at runtime. Without telemetry it is difficult to confirm which fallback path users hit when the dev server reports slow frames.
+3. **Text Renderer Hot Path** — The Glyphon text pipeline locks a global font system mutex and prepares/destroys `GlyphonBuffer`s on every render. With dense cursor tooltips this becomes a measurable fraction of frame time on WebGL/WebGPU but does not show up on Canvas.
+4. **NovyWave Overlay Redraws** — `render_frame` clones overlay objects (`overlay_objects.clone()`) before handing them to Fast2D, doubling allocations for transient UI markers. While minor on Canvas, this amplifies buffer growth on GPU backends.
+5. **Cache Key Granularity** — The current `StaticRenderKey` ties cache invalidation to the full viewport. Splitting background grid, waveform geometry, and labels by independent keys would allow panning to reuse most tessellated primitives, reducing uploads on WebGL/WebGPU.
+6. **MSAA Configuration** — MSAA is always enabled at 4×. Providing an opt-out or adaptive sample count (4→2→1) would help the Linux/NVIDIA software fallback and WebGL contexts with limited sample support.
+
 ## WebGPU Performance Analysis
 
 ### Current Implementation Problems
@@ -556,6 +578,36 @@ Timer::interval(16, || update_cursor());  // 60fps cursor
     - [ ] Optimize allocation patterns
     - [ ] Add memory profiling
     - **Expected Impact**: Eliminate memory spikes
+
+## Implementation Plan (Codex TODOs)
+
+### Phase 0 – Instrumentation & Diagnostics
+- [ ] Add runtime telemetry reporting which Fast2D backend is active and whether hardware acceleration is available.
+- [ ] Integrate optional high-resolution CPU frame timers plus WebGL timer queries to capture GPU time without affecting release builds.
+- [ ] Surface the collected metrics inside NovyWave’s debug overlay to avoid ad-hoc console logging during investigations.
+
+### Phase 1 – Fast2D GPU Backend Restructure
+- [ ] Introduce persistent vertex/index buffers with staged `queue.write_buffer` updates instead of per-frame `create_buffer_init` calls.
+- [ ] Build a geometry cache keyed by primitive parameters so Lyon tessellation only runs for dirty waveform segments.
+- [ ] Split static and dynamic draw lists and allow partial updates from host applications (append/remove/mutate primitives).
+- [ ] Parameterize present mode and MSAA selection, defaulting to high performance but permitting runtime downgrades for restricted adapters.
+
+### Phase 2 – WebGL/WebGPU Feature Enhancements
+- [ ] Negotiate WebGL extensions (`ANGLE_instanced_arrays`, `OES_vertex_array_object`, `EXT_disjoint_timer_query`, `EXT_texture_filter_anisotropic`, `OES_element_index_uint`) with graceful fallbacks.
+- [ ] Adopt instanced rendering and texture atlasing for repeated waveform primitives once extension support is confirmed.
+- [ ] Replace per-fragment sRGB conversion with an approximation table or pre-converted colors to trim shader ALU cost.
+- [ ] Implement adaptive MSAA (4→2→1) and present mode fallbacks triggered by detected software rendering or low-capability GPUs.
+
+### Phase 3 – NovyWave Integration Alignment
+- [ ] Introduce a render coordinator actor that batches multiple relays into a single frame render, preventing redundant redraws.
+- [ ] Update `WaveformRenderer` to publish incremental object patches once Fast2D exposes a differential update API.
+- [ ] Cache background grid and waveform geometry by variable signature, decoupled from viewport start/end, so pans reuse tessellated primitives.
+- [ ] Cache Glyphon text buffers for axis labels and cursor readouts to avoid per-frame re-layout on GPU backends.
+
+### Phase 4 – Validation & Rollout
+- [ ] Collect comparative benchmarks (Canvas vs WebGL vs WebGPU) across Windows, macOS, and Linux (NVIDIA/AMD/Intel) and record the results here.
+- [ ] Document backend selection and troubleshooting steps inside NovyWave developer docs, linking back to this guide.
+- [ ] Launch WebGL/WebGPU behind a feature flag, iterate with beta users, then promote to default once parity with Canvas is achieved.
 
 ## Testing & Verification
 
