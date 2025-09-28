@@ -3,16 +3,18 @@
 //! This module manages all GPU resources, pipelines, and rendering state needed to draw 2D graphics efficiently.
 //! It is designed to be beginner-friendly and well-documented for those new to graphics programming.
 
-use super::MSAA_SAMPLE_COUNT;
+use super::{ColoredVertex, MSAA_SAMPLE_COUNT};
 use bytemuck;
 use glyphon::Viewport;
-use glyphon::{Cache, ColorMode, Resolution, SwashCache, TextAtlas, TextRenderer};
+use glyphon::{
+    Buffer as GlyphonBuffer, Cache, ColorMode, Resolution, SwashCache, TextAtlas, TextRenderer,
+};
 use web_sys::HtmlCanvasElement;
 use web_sys::wasm_bindgen::UnwrapThrowExt;
 use wgpu::util::DeviceExt;
 use wgpu::{
-    BindGroup, Buffer as WgpuBuffer, Device, Queue, Surface, SurfaceConfiguration, SurfaceTarget,
-    Texture,
+    BindGroup, Buffer as WgpuBuffer, BufferUsages, Device, Queue, Surface, SurfaceConfiguration,
+    SurfaceTarget, Texture,
 };
 
 /// Uniforms for the canvas, passed to shaders.
@@ -60,6 +62,20 @@ pub struct Graphics {
     pub bind_group: BindGroup,
     /// Pipeline for drawing rectangles (shapes)
     pub rect_pipeline: wgpu::RenderPipeline,
+    /// Scratch vertex storage reused each frame
+    pub scratch_vertices: Vec<ColoredVertex>,
+    /// Scratch index storage reused each frame
+    pub scratch_indices: Vec<u32>,
+    /// GPU buffer reused for vertices across frames
+    pub vertex_buffer: Option<WgpuBuffer>,
+    /// Capacity in bytes of the current vertex buffer
+    pub vertex_capacity: usize,
+    /// GPU buffer reused for indices across frames
+    pub index_buffer: Option<WgpuBuffer>,
+    /// Capacity in bytes of the current index buffer
+    pub index_capacity: usize,
+    /// Pool of glyph buffers reused to avoid allocations during text shaping
+    pub glyph_buffer_pool: Vec<GlyphonBuffer>,
 }
 
 /// Resize the graphics surface and update all dependent resources.
@@ -340,8 +356,83 @@ pub async fn create_graphics(canvas: HtmlCanvasElement, width: u32, height: u32)
         uniform_buffer,
         bind_group,
         rect_pipeline,
+        scratch_vertices: Vec::new(),
+        scratch_indices: Vec::new(),
+        vertex_buffer: None,
+        vertex_capacity: 0,
+        index_buffer: None,
+        index_capacity: 0,
+        glyph_buffer_pool: Vec::new(),
     };
     // Ensure all resources are sized correctly
     resize_graphics(&mut graphics, width, height);
     graphics
+}
+
+impl Graphics {
+    const MIN_VERTEX_CAPACITY: usize = core::mem::size_of::<ColoredVertex>() * 256;
+    const MIN_INDEX_CAPACITY: usize = core::mem::size_of::<u32>() * 256;
+
+    pub(crate) fn ensure_vertex_buffer(&mut self, required_bytes: usize) -> WgpuBuffer {
+        let device = self.device.clone();
+        Self::ensure_gpu_buffer(
+            &device,
+            required_bytes,
+            BufferUsages::VERTEX | BufferUsages::COPY_DST,
+            "Fast2D Vertex Buffer",
+            &mut self.vertex_buffer,
+            &mut self.vertex_capacity,
+            Self::MIN_VERTEX_CAPACITY,
+        )
+    }
+
+    pub(crate) fn ensure_index_buffer(&mut self, required_bytes: usize) -> WgpuBuffer {
+        let device = self.device.clone();
+        Self::ensure_gpu_buffer(
+            &device,
+            required_bytes,
+            BufferUsages::INDEX | BufferUsages::COPY_DST,
+            "Fast2D Index Buffer",
+            &mut self.index_buffer,
+            &mut self.index_capacity,
+            Self::MIN_INDEX_CAPACITY,
+        )
+    }
+
+    fn ensure_gpu_buffer(
+        device: &Device,
+        required_bytes: usize,
+        usage: BufferUsages,
+        label: &'static str,
+        buffer_slot: &mut Option<WgpuBuffer>,
+        capacity_slot: &mut usize,
+        min_capacity: usize,
+    ) -> WgpuBuffer {
+        let required_bytes = required_bytes.max(1);
+        let mut desired_capacity = required_bytes.next_power_of_two();
+        if desired_capacity < min_capacity {
+            desired_capacity = min_capacity;
+        }
+
+        let needs_realloc = buffer_slot
+            .as_ref()
+            .map(|_| required_bytes > *capacity_slot)
+            .unwrap_or(true);
+
+        if needs_realloc {
+            let buffer = device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some(label),
+                size: desired_capacity as u64,
+                usage,
+                mapped_at_creation: false,
+            });
+            *capacity_slot = desired_capacity;
+            *buffer_slot = Some(buffer);
+        }
+
+        buffer_slot
+            .as_ref()
+            .expect("ensure_gpu_buffer must always return a buffer")
+            .clone()
+    }
 }

@@ -15,7 +15,7 @@ mod line;
 pub use line::Line;
 
 /// Represents a 2D object that can be rendered.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Object2d {
     /// A text object.
     Text(Text),

@@ -2,7 +2,7 @@ use super::Object2d;
 use crate::backend::{Color, Point};
 
 /// A circle shape with optional border.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Circle {
     /// The center point of the circle.
     pub(crate) center: Point,

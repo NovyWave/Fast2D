@@ -8,7 +8,7 @@ pub use family::Family;
 /// Represents a text object for 2D rendering.
 ///
 /// Allows customization of position, font, color, size, style, and bounding box.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Text {
     /// The text content to render.
     pub(crate) text: Cow<'static, str>,

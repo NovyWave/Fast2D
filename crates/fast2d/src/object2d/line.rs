@@ -2,7 +2,7 @@ use super::Object2d;
 use crate::backend::{Color, Point};
 
 /// A line shape defined by a sequence of points.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Line {
     /// The points that define the line path.
     pub(crate) points: Vec<Point>,

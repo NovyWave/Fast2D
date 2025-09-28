@@ -2,7 +2,7 @@ use super::Object2d;
 use crate::backend::{Color, Point, RoundedCorners, Size};
 
 /// A rectangle shape with optional border and rounded corners.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rectangle {
     /// The position of the rectangle's top-left corner.
     pub(crate) position: Point,

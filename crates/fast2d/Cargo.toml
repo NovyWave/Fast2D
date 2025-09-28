@@ -27,9 +27,9 @@ web-sys = { version = "0.3", default-features = false, optional = true, features
 # WebGL/WebGPU feature dependencies
 bytemuck = { version = "*", features = ["derive"], default-features = false, optional = true }
 euclid = { version = "*", features = ["bytemuck"], default-features = false, optional = true }
-glyphon = { version = "0.9.0", default-features = false, optional = true }
+glyphon = { git = "https://github.com/grovesNL/glyphon", rev = "724ab57edbd6c59ba219cd99cf89925d056392db", default-features = false, optional = true }
 lyon = { git = "https://github.com/nical/lyon", rev = "8f71592f51ad2c78237e827ec5b824744e9d3de4", default-features = false, optional = true }
-wgpu = { version = "25.0.0", features = ["wgsl"], default-features = false, optional = true }
+wgpu = { git = "https://github.com/gfx-rs/wgpu", tag = "v26.0.4", features = ["wgsl"], default-features = false, optional = true }
 
 # Blade-inspired WebGPU (browser-compatible WebGPU using Blade patterns)
 # Note: Pure Blade Graphics is for native apps, this uses WebGPU with Blade-style API

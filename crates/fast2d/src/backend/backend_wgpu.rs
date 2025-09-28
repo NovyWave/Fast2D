@@ -16,6 +16,9 @@ pub use graphics::{Graphics, create_graphics, resize_graphics};
 use std::sync::{Mutex, OnceLock};
 
 pub static FONT_SYSTEM: OnceLock<Mutex<glyphon::FontSystem>> = OnceLock::new();
+#[cfg(feature = "webgl")]
+pub const MSAA_SAMPLE_COUNT: u32 = 1;
+#[cfg(not(feature = "webgl"))]
 pub const MSAA_SAMPLE_COUNT: u32 = 4;
 
 #[repr(C)]

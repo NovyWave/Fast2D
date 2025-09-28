@@ -591,6 +591,8 @@ Timer::interval(16, || update_cursor());  // 60fps cursor
 - [ ] Build a geometry cache keyed by primitive parameters so Lyon tessellation only runs for dirty waveform segments.
 - [ ] Split static and dynamic draw lists and allow partial updates from host applications (append/remove/mutate primitives).
 - [ ] Parameterize present mode and MSAA selection, defaulting to high performance but permitting runtime downgrades for restricted adapters.
+- [x] Reuse CPU-side scratch buffers for vertices/indices to eliminate per-frame `Vec` reallocations.
+- [ ] Experiment with `MemoryHints::Manual` now available in wgpu 26 to dial browser VRAM growth vs. throughput for large waveform sessions.
 
 ### Phase 2 – WebGL/WebGPU Feature Enhancements
 - [ ] Negotiate WebGL extensions (`ANGLE_instanced_arrays`, `OES_vertex_array_object`, `EXT_disjoint_timer_query`, `EXT_texture_filter_anisotropic`, `OES_element_index_uint`) with graceful fallbacks.

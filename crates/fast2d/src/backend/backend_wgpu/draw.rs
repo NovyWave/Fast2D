@@ -14,7 +14,6 @@ use lyon::tessellation::{
 use web_sys::console;
 use web_sys::wasm_bindgen::{JsValue, UnwrapThrowExt};
 use wgpu::TextureViewDescriptor;
-use wgpu::util::DeviceExt;
 
 // The main draw function for rendering all 2D objects using wgpu
 pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
@@ -53,7 +52,11 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         .expect_throw("Failed to lock FontSystem Mutex");
 
     // Prepare glyph buffers for all text objects
-    let mut glyph_buffers: Vec<GlyphonBuffer> = Vec::new();
+    let text_count = objects
+        .iter()
+        .filter(|obj| matches!(obj, crate::Object2d::Text(_)))
+        .count();
+    let mut glyph_buffers: Vec<GlyphonBuffer> = Vec::with_capacity(text_count);
 
     // Loop through all objects and collect text buffers
     for obj in objects {
@@ -62,15 +65,27 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             let text_width_f32 = text.width;
             let text_height_f32 = text.height;
             let line_height_pixels = text.font_size * text.line_height_multiplier;
-            let mut buffer = GlyphonBuffer::new(
-                &mut font_system,
-                Metrics::new(text.font_size, line_height_pixels),
-            );
-            buffer.set_size(
-                &mut font_system,
-                Some(text_width_f32),
-                Some(text_height_f32),
-            );
+            let metrics = Metrics::new(text.font_size, line_height_pixels);
+            let mut buffer = match gfx.glyph_buffer_pool.pop() {
+                Some(mut buffer) => {
+                    buffer.set_metrics_and_size(
+                        &mut font_system,
+                        metrics,
+                        Some(text_width_f32),
+                        Some(text_height_f32),
+                    );
+                    buffer
+                }
+                None => {
+                    let mut buffer = GlyphonBuffer::new(&mut font_system, metrics);
+                    buffer.set_size(
+                        &mut font_system,
+                        Some(text_width_f32),
+                        Some(text_height_f32),
+                    );
+                    buffer
+                }
+            };
 
             // Convert font family to glyphon format
             let glyphon_family = match &text.family {
@@ -135,7 +150,7 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
     }
 
     // Prepare text areas for rendering (position, bounds, etc.)
-    let mut text_areas: Vec<TextArea> = Vec::new();
+    let mut text_areas: Vec<TextArea> = Vec::with_capacity(text_count);
     let mut buffer_idx = 0;
     for obj in objects {
         if let crate::Object2d::Text(text) = obj {
@@ -178,8 +193,16 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         ))),
     }
 
+    gfx.glyph_buffer_pool.extend(glyph_buffers.into_iter());
+
     // Create vertex and tessellator buffers for shape rendering
-    let mut buffers: VertexBuffers<ColoredVertex, u32> = VertexBuffers::new();
+    let mut buffers = VertexBuffers {
+        vertices: std::mem::take(&mut gfx.scratch_vertices),
+        indices: std::mem::take(&mut gfx.scratch_indices),
+    };
+    buffers.vertices.clear();
+    buffers.indices.clear();
+
     let mut fill_tessellator = FillTessellator::new();
     let mut stroke_tessellator = StrokeTessellator::new();
 
@@ -437,21 +460,22 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         }
     }
 
-    // Create GPU buffers for vertices and indices
-    let vertex_buffer = gfx
-        .device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&buffers.vertices),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-    let index_buffer = gfx
-        .device
-        .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(&buffers.indices),
-            usage: wgpu::BufferUsages::INDEX,
-        });
+    // Upload tessellated geometry into persistent GPU buffers
+    let vertex_bytes = buffers.vertices.len() * std::mem::size_of::<ColoredVertex>();
+    let index_bytes = buffers.indices.len() * std::mem::size_of::<u32>();
+
+    let vertex_buffer = gfx.ensure_vertex_buffer(vertex_bytes);
+    if vertex_bytes > 0 {
+        gfx.queue
+            .write_buffer(&vertex_buffer, 0, bytemuck::cast_slice(&buffers.vertices));
+    }
+
+    let index_buffer = gfx.ensure_index_buffer(index_bytes);
+    if index_bytes > 0 {
+        gfx.queue
+            .write_buffer(&index_buffer, 0, bytemuck::cast_slice(&buffers.indices));
+    }
+
     let num_indices = buffers.indices.len() as u32;
 
     // Create a command encoder for the GPU commands
@@ -466,6 +490,7 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
             label: Some("Render Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &msaa_view,
+                depth_slice: None,
                 resolve_target: Some(&view),
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
@@ -504,6 +529,9 @@ pub fn draw(gfx: &mut Graphics, objects: &[crate::Object2d]) {
         }
     }
     // Submit all drawing commands to the GPU
+    gfx.scratch_vertices = buffers.vertices;
+    gfx.scratch_indices = buffers.indices;
+
     gfx.queue.submit(std::iter::once(encoder.finish()));
     // Present the final image to the screen
     output.present();
